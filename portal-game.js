@@ -9,6 +9,10 @@ export class PortalGame extends Scene {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
 
+        this.has_initialized = false;
+
+        this.waiting_for_pointer_lock = true;
+
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
             torus: new defs.Torus(15, 15),
@@ -36,6 +40,65 @@ export class PortalGame extends Scene {
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
             console.log("Switch Mouse Mode");
         });
+    }
+
+    // Called the first time display() is called.
+    // Only use this for things that can't be done in the constructor - for instance,
+    // interacting with DOM elements that don't exist at construction time.
+    runtime_initialize() {
+        // Mess with the DOM to add a dark overlay saying "Click to play" over the
+        // canvas. These cue the player into giving pointer control to the game.
+        const container_element = document.createElement("div");
+        container_element.style.cssText = "position: relative; width: 1080px; height: 600px;";
+        const dark_overlay = document.createElement("div");
+        dark_overlay.textContent = "Click to play";
+        dark_overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: #000;
+            color: #fff;
+            font-size: 64px;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 600px;
+            user-select: none;
+            opacity: 0.5;`;
+        const canvas_element = document.querySelector(".canvas-widget canvas");
+        canvas_element.style.position = "absolute";
+
+        canvas_element.parentNode.prepend(container_element);
+        container_element.appendChild(canvas_element);
+        container_element.appendChild(dark_overlay);
+
+        dark_overlay.addEventListener("click", () => {
+            if (dark_overlay.textContent !== "") {
+                // The WebStorm warning can be ignored, it's because unadjustedMovement isn't supported everywhere:
+                // https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock#browser_compatibility
+                dark_overlay.requestPointerLock({ unadjustedMovement: true });
+            }
+        });
+
+        document.addEventListener("pointerlockchange", () => {
+            this.waiting_for_pointer_lock = !document.pointerLockElement;
+            if (document.pointerLockElement) {
+                dark_overlay.style.visibility = "hidden";
+            }
+            else {
+                // The user has disengaged the pointer lock.
+                // We get an error if we retry requestPointerLock too quickly (even if the user is responsible by clicking),
+                // so wait a while before letting the user try again.
+                // (See https://discourse.threejs.org/t/how-to-avoid-pointerlockcontrols-error/33017/5)
+                dark_overlay.style.visibility = "visible";
+                dark_overlay.textContent = "";
+                setTimeout(() => {
+                    dark_overlay.textContent = "Click to play";
+                }, 1300); // 1300 seems long enough to avoid the error on Chrome
+            }
+        });
+        document.addEventListener("pointerlockerror", () => alert("Pointer lock error"));
     }
 
     draw_environment(context, program_state, environment_transform) {
@@ -74,6 +137,16 @@ export class PortalGame extends Scene {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(this.initial_camera_location);
+        }
+        if (!this.has_initialized) {
+            this.runtime_initialize();
+            this.has_initialized = true;
+        }
+        // Pause everything if we are waiting for pointer lock.
+        program_state.animate = !this.waiting_for_pointer_lock;
+
+        if (program_state.animate) {
+            // PUT ALL UPDATE LOGIC HERE
         }
 
         // Create light for the 3-d plane
