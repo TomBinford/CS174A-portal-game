@@ -32,12 +32,9 @@ export class PortalGame extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Action 1", ["Control", "0"], () => {
-            console.log("doing action 1")
-        });
         this.new_line();
-        this.key_triggered_button("Action 2", ["Control", "1"], () => {
-            console.log("doing action 2")
+        this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
+            console.log("Switch Mouse Mode");
         });
     }
 
@@ -87,14 +84,15 @@ export class PortalGame extends Scene {
         // Draw floor, walls
         this.draw_environment(context, program_state);
 
+        // Create Body (A sphere below the player/camera transform)
+        // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
+        var body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
+        this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
+
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
-        // *** Lighting
-        // The parameters of the Light are: position, color, size
-        program_state.lights = [new Light(vec4(0, 0, 0, 1), hex_color("#ffffff"), 10 ** 3)];
-
         // *** Draw stuff
-        this.shapes.sphere3.draw(context, program_state, Mat4.identity(), this.materials.test);
+        // this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
     }
 }
