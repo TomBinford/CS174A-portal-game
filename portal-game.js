@@ -60,6 +60,7 @@ export class PortalGame extends Scene {
             left: 0;
             background: #000;
             color: #fff;
+            font-family: "Calibri", sans-serif;
             font-size: 64px;
             text-align: center;
             vertical-align: middle;
