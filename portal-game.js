@@ -11,7 +11,7 @@ export class PortalGame extends Scene {
 
         this.has_initialized = false;
 
-        this.waiting_for_pointer_lock = true;
+        this.has_pointer_lock = false;
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
@@ -83,7 +83,7 @@ export class PortalGame extends Scene {
         });
 
         document.addEventListener("pointerlockchange", () => {
-            this.waiting_for_pointer_lock = !document.pointerLockElement;
+            this.has_pointer_lock = !!document.pointerLockElement;
             if (document.pointerLockElement) {
                 dark_overlay.style.visibility = "hidden";
             }
@@ -100,6 +100,24 @@ export class PortalGame extends Scene {
             }
         });
         document.addEventListener("pointerlockerror", () => alert("Pointer lock error"));
+
+        let sumX = 0;
+        const browser_is_firefox = navigator.userAgent.includes("Firefox");
+        dark_overlay.addEventListener("mousemove", (e) => {
+            if (this.has_pointer_lock) {
+                // e.movementX and e.movementY have inconsistent units between browsers :(
+                // This code attempts to account for the table in https://github.com/w3c/pointerlock/issues/42
+                // and bring all values to Chrome/Edge's units.
+                // On Tom's laptop at both 100% and 200% display scaling it gives results that
+                // agree between Chrome and Firefox. Untested on Safari.
+                const scaling_factor = browser_is_firefox ? 1/window.devicePixelRatio : 1.0;
+                const movementX = scaling_factor * e.movementX;
+                const movementY = scaling_factor * e.movementY;
+                sumX += movementX;
+                console.log(sumX);
+                // TODO use movementX and movementY to rotate the camera
+            }
+        });
     }
 
     draw_environment(context, program_state, environment_transform) {
@@ -143,8 +161,8 @@ export class PortalGame extends Scene {
             this.runtime_initialize();
             this.has_initialized = true;
         }
-        // Pause everything if we are waiting for pointer lock.
-        program_state.animate = !this.waiting_for_pointer_lock;
+        // Pause everything if we don't have the pointer lock.
+        program_state.animate = this.has_pointer_lock;
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
