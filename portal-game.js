@@ -144,7 +144,8 @@ export class PortalGame extends Scene {
                 // This code attempts to account for the table in https://github.com/w3c/pointerlock/issues/42
                 // and bring all values to Chrome/Edge's units.
                 // On Tom's laptop at both 100% and 200% display scaling it gives results that
-                // agree between Chrome and Firefox. Untested on Safari.
+                // agree between Chrome and Firefox.
+                // TODO test on Safari
                 const scaling_factor = browser_is_firefox ? 1/window.devicePixelRatio : 1.0;
                 const movementX = scaling_factor * e.movementX;
                 const movementY = scaling_factor * e.movementY;
