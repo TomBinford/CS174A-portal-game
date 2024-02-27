@@ -46,14 +46,14 @@ export class PortalGame extends Scene {
     }
 
     move_player_from_wasd() {
-        const w_contribution = this.w_pressed ? vec4(0, 0, 1, 0) : vec4(0, 0, 0, 0);
+        const w_contribution = this.w_pressed ? vec4(0, 0, -1, 0) : vec4(0, 0, 0, 0);
         const a_contribution = this.a_pressed ? vec4(-1, 0, 0, 0) : vec4(0, 0, 0, 0);
-        const s_contribution = this.s_pressed ? vec4(0, 0, -1, 0) : vec4(0, 0, 0, 0);
+        const s_contribution = this.s_pressed ? vec4(0, 0, 1, 0) : vec4(0, 0, 0, 0);
         const d_contribution = this.d_pressed ? vec4(1, 0, 0, 0) : vec4(0, 0, 0, 0);
 
         const relative_movement_dir = w_contribution.plus(a_contribution).plus(s_contribution).plus(d_contribution);
         if (relative_movement_dir.norm() > 0) {
-            const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, 1, 0).times(relative_movement_dir);
+            const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(relative_movement_dir);
             const player_speed = 0.2;
             const position_delta = absolute_movement_dir.normalized().times(player_speed);
             this.player.position = this.player.position.plus(position_delta);
@@ -175,11 +175,11 @@ export class PortalGame extends Scene {
         // Create walls ( Each wall is 3 units away from the origin)
 
         // Front Wall
-        var front_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, 3)).times(Mat4.rotation(0, 1, 0, 0)));
+        var front_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, -3)).times(Mat4.rotation(0, 1, 0, 0)));
         this.shapes.square.draw(context, program_state, front_wall_transform, this.materials.test.override({color: hex_color("#fdaaf2")}));
 
         // Back Wall
-        var back_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, -3)).times(Mat4.rotation(0, 1, 0, 0)));
+        var back_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, 3)).times(Mat4.rotation(0, 1, 0, 0)));
         this.shapes.square.draw(context, program_state, back_wall_transform, this.materials.test.override({color: hex_color("#0029ff")}));
 
         // Left Wall
@@ -226,7 +226,7 @@ export class PortalGame extends Scene {
 
         // Set the camera for this frame
         const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
-        const player_transform = Mat4.translation(this.player.position[0], this.player.position[1], -this.player.position[2]).times(player_look_transform);
-        program_state.set_camera(Mat4.inverse(Mat4.scale(1, 1, -1).times(player_transform)));
+        const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
+        program_state.set_camera(Mat4.inverse(player_transform));
     }
 }
