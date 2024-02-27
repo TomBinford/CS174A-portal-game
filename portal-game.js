@@ -45,7 +45,7 @@ export class PortalGame extends Scene {
         };
     }
 
-    move_player_from_wasd() {
+    move_player_from_wasd(time_delta_ms) {
         const w_contribution = this.w_pressed ? vec4(0, 0, -1, 0) : vec4(0, 0, 0, 0);
         const a_contribution = this.a_pressed ? vec4(-1, 0, 0, 0) : vec4(0, 0, 0, 0);
         const s_contribution = this.s_pressed ? vec4(0, 0, 1, 0) : vec4(0, 0, 0, 0);
@@ -54,8 +54,9 @@ export class PortalGame extends Scene {
         const relative_movement_dir = w_contribution.plus(a_contribution).plus(s_contribution).plus(d_contribution);
         if (relative_movement_dir.norm() > 0) {
             const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(relative_movement_dir);
-            const player_speed = 0.2;
-            const position_delta = absolute_movement_dir.normalized().times(player_speed);
+            const player_speed = 0.010;
+            const distance_moved = player_speed * time_delta_ms;
+            const position_delta = absolute_movement_dir.normalized().times(distance_moved);
             this.player.position = this.player.position.plus(position_delta);
         }
     }
@@ -208,7 +209,7 @@ export class PortalGame extends Scene {
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
-            this.move_player_from_wasd();
+            this.move_player_from_wasd(program_state.animation_delta_time);
         }
 
         // Create light for the 3-d plane
