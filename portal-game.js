@@ -33,6 +33,11 @@ export class PortalGame extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
         }
 
+        this.w_pressed = false;
+        this.a_pressed = false;
+        this.s_pressed = false;
+        this.d_pressed = false;
+
         this.player = {
             orientation_up: 0.0,
             orientation_clockwise: 0.0,
@@ -40,26 +45,16 @@ export class PortalGame extends Scene {
         };
     }
 
-    process_move_button(direction) {
-        if (this.has_pointer_lock) {
-            // TODO handle multiple buttons being pressed at a time
-            let relative_movement_dir = null;
-            switch (direction) {
-                case "forward":
-                    relative_movement_dir = vec4(0, 0, 1, 0);
-                    break;
-                case "back":
-                    relative_movement_dir = vec4(0, 0, -1, 0);
-                    break;
-                case "left":
-                    relative_movement_dir = vec4(-1, 0, 0, 0);
-                    break;
-                case "right":
-                    relative_movement_dir = vec4(1, 0, 0, 0);
-                    break;
-            }
+    move_player_from_wasd() {
+        const w_contribution = this.w_pressed ? vec4(0, 0, 1, 0) : vec4(0, 0, 0, 0);
+        const a_contribution = this.a_pressed ? vec4(-1, 0, 0, 0) : vec4(0, 0, 0, 0);
+        const s_contribution = this.s_pressed ? vec4(0, 0, -1, 0) : vec4(0, 0, 0, 0);
+        const d_contribution = this.d_pressed ? vec4(1, 0, 0, 0) : vec4(0, 0, 0, 0);
+
+        const relative_movement_dir = w_contribution.plus(a_contribution).plus(s_contribution).plus(d_contribution);
+        if (relative_movement_dir.norm() > 0) {
             const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, 1, 0).times(relative_movement_dir);
-            const player_speed = 0.5;
+            const player_speed = 0.2;
             const position_delta = absolute_movement_dir.normalized().times(player_speed);
             this.player.position = this.player.position.plus(position_delta);
         }
@@ -67,15 +62,15 @@ export class PortalGame extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        // TODO: use the release_event parameter for WASD so we can stop moving on the frame the button is released
         this.key_triggered_button("move forward", ["w"],
-        () => this.process_move_button("forward"));
+        () => { this.w_pressed = true; }, "#6E6460", () => { this.w_pressed = false; });
         this.key_triggered_button("move back", ["s"],
-            () => this.process_move_button("back"));
+            () => { this.s_pressed = true; }, "#6E6460", () => { this.s_pressed = false; });
+        this.new_line();
         this.key_triggered_button("move left", ["a"],
-            () => this.process_move_button("left"));
+            () => { this.a_pressed = true; }, "#6E6460", () => { this.a_pressed = false; });
         this.key_triggered_button("move right", ["d"],
-            () => this.process_move_button("right"));
+            () => { this.d_pressed = true; }, "#6E6460", () => { this.d_pressed = false; });
         this.new_line();
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
             console.log("Switch Mouse Mode");
@@ -200,7 +195,6 @@ export class PortalGame extends Scene {
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global projection matrix, which is stored in program_state.
             program_state.projection_transform = Mat4.perspective(
                 Math.PI / 4, context.width / context.height, .1, 1000);
@@ -214,6 +208,7 @@ export class PortalGame extends Scene {
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
+            this.move_player_from_wasd();
         }
 
         // Create light for the 3-d plane
