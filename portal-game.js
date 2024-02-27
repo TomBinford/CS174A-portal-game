@@ -195,8 +195,8 @@ export class PortalGame extends Scene {
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
 
         // Set the camera for this frame
-        const player_look_transform = Mat4.rotation(this.player.orientation_up, -1, 0, 0).times(Mat4.rotation(this.player.orientation_clockwise, 0, 1, 0));
+        const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
         const player_transform = Mat4.translation(0, 0, 0).times(player_look_transform);
-        program_state.set_camera(player_transform);
+        program_state.set_camera(Mat4.inverse(player_transform));
     }
 }
