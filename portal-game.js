@@ -79,17 +79,17 @@ export class PortalGame extends Scene {
         container_element.appendChild(canvas_element);
         container_element.appendChild(dark_overlay);
 
+        let can_attempt_pointer_lock = true;
         dark_overlay.addEventListener("click", () => {
-            if (dark_overlay.textContent !== "") {
+            if (can_attempt_pointer_lock) {
                 // The WebStorm warning can be ignored, it's because unadjustedMovement isn't supported everywhere:
                 // https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock#browser_compatibility
                 dark_overlay.requestPointerLock({ unadjustedMovement: true });
             }
         });
-
         document.addEventListener("pointerlockchange", () => {
             this.has_pointer_lock = !!document.pointerLockElement;
-            if (document.pointerLockElement) {
+            if (this.has_pointer_lock) {
                 dark_overlay.style.visibility = "hidden";
             }
             else {
@@ -98,10 +98,10 @@ export class PortalGame extends Scene {
                 // so wait a while before letting the user try again.
                 // (See https://discourse.threejs.org/t/how-to-avoid-pointerlockcontrols-error/33017/5)
                 dark_overlay.style.visibility = "visible";
-                dark_overlay.textContent = "";
+                can_attempt_pointer_lock = false;
                 setTimeout(() => {
-                    dark_overlay.textContent = "Click to play";
-                }, 1300); // 1300 seems long enough to avoid the error on Chrome
+                    can_attempt_pointer_lock = true;
+                }, 1250); // 1250 seems long enough to avoid the error on Chrome
             }
         });
         document.addEventListener("pointerlockerror", () => alert("Pointer lock error"));
