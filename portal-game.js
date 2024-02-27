@@ -36,11 +36,46 @@ export class PortalGame extends Scene {
         this.player = {
             orientation_up: 0.0,
             orientation_clockwise: 0.0,
+            position: vec4(0, 0, 0, 1),
         };
+    }
+
+    process_move_button(direction) {
+        if (this.has_pointer_lock) {
+            // TODO handle multiple buttons being pressed at a time
+            let relative_movement_dir = null;
+            switch (direction) {
+                case "forward":
+                    relative_movement_dir = vec4(0, 0, 1, 0);
+                    break;
+                case "back":
+                    relative_movement_dir = vec4(0, 0, -1, 0);
+                    break;
+                case "left":
+                    relative_movement_dir = vec4(-1, 0, 0, 0);
+                    break;
+                case "right":
+                    relative_movement_dir = vec4(1, 0, 0, 0);
+                    break;
+            }
+            const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, 1, 0).times(relative_movement_dir);
+            const player_speed = 0.5;
+            const position_delta = absolute_movement_dir.normalized().times(player_speed);
+            this.player.position = this.player.position.plus(position_delta);
+        }
     }
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+        // TODO: use the release_event parameter for WASD so we can stop moving on the frame the button is released
+        this.key_triggered_button("move forward", ["w"],
+        () => this.process_move_button("forward"));
+        this.key_triggered_button("move back", ["s"],
+            () => this.process_move_button("back"));
+        this.key_triggered_button("move left", ["a"],
+            () => this.process_move_button("left"));
+        this.key_triggered_button("move right", ["d"],
+            () => this.process_move_button("right"));
         this.new_line();
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
             console.log("Switch Mouse Mode");
@@ -153,11 +188,11 @@ export class PortalGame extends Scene {
         this.shapes.square.draw(context, program_state, back_wall_transform, this.materials.test.override({color: hex_color("#0029ff")}));
 
         // Left Wall
-        var left_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
+        var left_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(-3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
         this.shapes.square.draw(context, program_state, left_wall_transform, this.materials.test.override({color: hex_color("#6d379a")}));
 
         // Right Wall
-        var right_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(-3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
+        var right_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
         this.shapes.square.draw(context, program_state, right_wall_transform, this.materials.test.override({color: hex_color("#ff0000")}));
     }
 
@@ -196,7 +231,7 @@ export class PortalGame extends Scene {
 
         // Set the camera for this frame
         const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
-        const player_transform = Mat4.translation(0, 0, 0).times(player_look_transform);
-        program_state.set_camera(Mat4.inverse(player_transform));
+        const player_transform = Mat4.translation(this.player.position[0], this.player.position[1], -this.player.position[2]).times(player_look_transform);
+        program_state.set_camera(Mat4.inverse(Mat4.scale(1, 1, -1).times(player_transform)));
     }
 }
