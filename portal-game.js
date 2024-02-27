@@ -4,6 +4,10 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
 } = tiny;
 
+function clamp(x, min, max) {
+    return x < min ? min : (x > max ? max : x);
+}
+
 export class PortalGame extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
@@ -29,9 +33,10 @@ export class PortalGame extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
         }
 
-        // Note: Camera location uses following params: eye, center/POI, up
-        // Current params make a diagonal top-down view
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.player = {
+            orientation_up: 0.0,
+            orientation_clockwise: 0.0,
+        };
     }
 
     make_control_panel() {
@@ -101,7 +106,6 @@ export class PortalGame extends Scene {
         });
         document.addEventListener("pointerlockerror", () => alert("Pointer lock error"));
 
-        let sumX = 0;
         const browser_is_firefox = navigator.userAgent.includes("Firefox");
         dark_overlay.addEventListener("mousemove", (e) => {
             if (this.has_pointer_lock) {
@@ -113,9 +117,17 @@ export class PortalGame extends Scene {
                 const scaling_factor = browser_is_firefox ? 1/window.devicePixelRatio : 1.0;
                 const movementX = scaling_factor * e.movementX;
                 const movementY = scaling_factor * e.movementY;
-                sumX += movementX;
-                console.log(sumX);
-                // TODO use movementX and movementY to rotate the camera
+
+                const delta_up = movementY * -0.005;
+                const delta_clockwise = movementX * 0.005;
+                this.player.orientation_up = clamp(this.player.orientation_up + delta_up, -Math.PI/2, Math.PI/2);
+                this.player.orientation_clockwise += delta_clockwise;
+                if (this.player.orientation_clockwise > Math.PI) {
+                    this.player.orientation_clockwise -= 2*Math.PI;
+                }
+                else if (this.player.orientation_clockwise < -Math.PI) {
+                    this.player.orientation_clockwise += 2 * Math.PI;
+                }
             }
         });
     }
@@ -154,8 +166,9 @@ export class PortalGame extends Scene {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
-            // Define the global camera and projection matrices, which are stored in program_state.
-            program_state.set_camera(this.initial_camera_location);
+            // Define the global projection matrix, which is stored in program_state.
+            program_state.projection_transform = Mat4.perspective(
+                Math.PI / 4, context.width / context.height, .1, 1000);
         }
         if (!this.has_initialized) {
             this.runtime_initialize();
@@ -181,10 +194,9 @@ export class PortalGame extends Scene {
         var body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
 
-        program_state.projection_transform = Mat4.perspective(
-            Math.PI / 4, context.width / context.height, .1, 1000);
-
-        // *** Draw stuff
-        // this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
+        // Set the camera for this frame
+        const player_look_transform = Mat4.rotation(this.player.orientation_up, -1, 0, 0).times(Mat4.rotation(this.player.orientation_clockwise, 0, 1, 0));
+        const player_transform = Mat4.translation(0, 0, 0).times(player_look_transform);
+        program_state.set_camera(player_transform);
     }
 }
