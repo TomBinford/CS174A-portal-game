@@ -8,6 +8,27 @@ function clamp(x, min, max) {
     return x < min ? min : (x > max ? max : x);
 }
 
+function xyz(vec) {
+    return vec3(vec[0], vec[1], vec[2]);
+}
+
+class Wall {
+    // center and normal are vec4's.
+    constructor(center, normal, width, height, material) {
+        this.center = center;
+        this.width = width;
+        this.height = height;
+        this.normal = normal.normalized();
+        this.material = material;
+    }
+
+    draw(context, program_state, square) {
+        const scale_mat = Mat4.scale(this.width, this.height, 1);
+        const model_transform = Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0)).times(scale_mat);
+        square.draw(context, program_state, model_transform, this.material);
+    }
+}
+
 export class PortalGame extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
@@ -54,11 +75,39 @@ export class PortalGame extends Scene {
         const relative_movement_dir = w_contribution.plus(a_contribution).plus(s_contribution).plus(d_contribution);
         if (relative_movement_dir.norm() > 0) {
             const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(relative_movement_dir);
-            const player_speed = 0.010;
+            const player_speed = 0.015;
             const distance_moved = player_speed * time_delta_ms;
             const position_delta = absolute_movement_dir.normalized().times(distance_moved);
             this.player.position = this.player.position.plus(position_delta);
         }
+    }
+
+    // All parameters are vec4's.
+    t_from_plane_to_point(plane_normal, point_on_plane, point) {
+        // Adapted from nearest_point_on_plane_to_point
+        const relative_point_on_plane = point_on_plane.minus(point);
+        return -plane_normal.dot(relative_point_on_plane);
+    }
+
+    // All parameters are vec4's.
+    nearest_point_on_plane_to_point(plane_normal, point_on_plane, point) {
+        // Adapted from https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_plane
+        // <x, y, z> = point_on_plane - point
+        // d = ax + by + cz, that is d = plane_normal dot <x, y, z>
+        // closest_point = normal * d / normal dot normal (but we know normal is a unit vector)
+        const relative_point_on_plane = point_on_plane.minus(point);
+        const d = plane_normal.dot(relative_point_on_plane);
+        const relative_closest_point = plane_normal.times(d);//.times(1 / plane_normal.dot(plane_normal));
+        return relative_closest_point.plus(point);
+    }
+
+    solve_player_collision(wall, player_radius) {
+        const t = this.t_from_plane_to_point(wall.normal, wall.center, this.player.position);
+        if (t < player_radius) {
+            // Player has gone past the wall; need to push them back out.
+            return wall.normal.times(-(t - player_radius));
+        }
+        return vec4(0, 0, 0, 0);
     }
 
     make_control_panel() {
@@ -208,9 +257,12 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
+        const my_wall = new Wall(vec3(0, 0, -5), vec3(0, 0, 1), 3, 3, this.materials.test.override({color: hex_color("#006600")}));
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
             this.move_player_from_wasd(program_state.animation_delta_time);
+            const resolution_force = this.solve_player_collision(my_wall, 1);
+            this.player.position = this.player.position.plus(resolution_force);
         }
 
         // Create light for the 3-d plane
@@ -220,6 +272,8 @@ export class PortalGame extends Scene {
 
         // Draw floor, walls
         this.draw_environment(context, program_state);
+
+        my_wall.draw(context, program_state, this.shapes.square);
 
         // Create Body (A sphere below the player/camera transform)
         // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
