@@ -23,8 +23,8 @@ class Wall {
     }
 
     draw(context, program_state, square) {
-        const scale_mat = Mat4.scale(this.width, this.height, 1);
-        const model_transform = Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0)).times(scale_mat);
+        const scale_mat = Mat4.scale(this.width / 2, this.height / 2, 1);
+        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
         square.draw(context, program_state, model_transform, this.material);
     }
 }
@@ -59,6 +59,7 @@ export class PortalGame extends Scene {
         this.s_pressed = false;
         this.d_pressed = false;
 
+        this.player_speed = 0.015;
         this.player = {
             orientation_up: 0.0,
             orientation_clockwise: 0.0,
@@ -75,8 +76,7 @@ export class PortalGame extends Scene {
         const relative_movement_dir = w_contribution.plus(a_contribution).plus(s_contribution).plus(d_contribution);
         if (relative_movement_dir.norm() > 0) {
             const absolute_movement_dir = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(relative_movement_dir);
-            const player_speed = 0.015;
-            const distance_moved = player_speed * time_delta_ms;
+            const distance_moved = this.player_speed * time_delta_ms;
             const position_delta = absolute_movement_dir.normalized().times(distance_moved);
             this.player.position = this.player.position.plus(position_delta);
         }
@@ -101,11 +101,21 @@ export class PortalGame extends Scene {
         return relative_closest_point.plus(point);
     }
 
-    solve_player_collision(wall, player_radius) {
+    solve_player_collision(wall, player_radius, player_height) {
         const t = this.t_from_plane_to_point(wall.normal, wall.center, this.player.position);
-        if (t < player_radius) {
-            // Player has gone past the wall; need to push them back out.
-            return wall.normal.times(-(t - player_radius));
+        if (t < player_radius && t > -this.player_speed) {
+            const radius_component_not_inside_wall = Math.sqrt(player_radius**2 - t**2);
+            const point_of_contact = this.nearest_point_on_plane_to_point(wall.normal, wall.center, this.player.position);
+            const point_of_contact_vertical = point_of_contact[1] - wall.center[1];
+            const point_of_contact_horizontal = vec3(point_of_contact[0], 0, point_of_contact[2]).minus(vec3(wall.center[0], 0, wall.center[2])).norm();
+            const wall_contact_vertical = point_of_contact_vertical <= wall.height / 2
+                                          || point_of_contact_vertical >= wall.height / 2 - player_height;
+            const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2 + radius_component_not_inside_wall;
+            if (wall_contact_vertical && wall_contact_horizontal) {
+                // Player has gone into the wall; need to push them back out.
+                return wall.normal.times(-(t - player_radius));
+            }
+            // Otherwise the player is going around the wall.
         }
         return vec4(0, 0, 0, 0);
     }
@@ -257,12 +267,20 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
-        const my_wall = new Wall(vec3(0, 0, -5), vec3(0, 0, 1), 3, 3, this.materials.test.override({color: hex_color("#006600")}));
+        const my_wall = new Wall(vec3(0, -5, -4.5), vec3(0, 0, 1), 3, 6, this.materials.test.override({color: hex_color("#006600")}));
+        const my_wall2 = new Wall(vec3(0, -5, -7.5), vec3(0, 0, -1), 3, 6, this.materials.test.override({color: hex_color("#003300")}));
+        const my_wall3 = new Wall(vec3(-1.5, -5, -6), vec3(-1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#444444")}));
+        const my_wall4 = new Wall(vec3(1.5, -5, -6), vec3(1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#666666")}));
+        const game_walls = [my_wall, my_wall2, my_wall3, my_wall4];
+
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
             this.move_player_from_wasd(program_state.animation_delta_time);
-            const resolution_force = this.solve_player_collision(my_wall, 1);
-            this.player.position = this.player.position.plus(resolution_force);
+            // Do physics
+            for (const wall of game_walls) {
+                const resolution_force = this.solve_player_collision(wall, 1.0, 2.0);
+                this.player.position = this.player.position.plus(resolution_force);
+            }
         }
 
         // Create light for the 3-d plane
@@ -273,7 +291,9 @@ export class PortalGame extends Scene {
         // Draw floor, walls
         this.draw_environment(context, program_state);
 
-        my_wall.draw(context, program_state, this.shapes.square);
+        for (const wall of game_walls) {
+            wall.draw(context, program_state, this.shapes.square);
+        }
 
         // Create Body (A sphere below the player/camera transform)
         // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
