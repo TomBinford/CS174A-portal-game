@@ -52,6 +52,10 @@ export class PortalGame extends Scene {
         this.materials = {
             test: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
+            wall: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#0083a0")}),
+            bwall: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#7800a0")}),
         }
 
         this.w_pressed = false;
@@ -230,26 +234,9 @@ export class PortalGame extends Scene {
         var floor_transform = model_transform;
         var horizontal_angle = Math.PI / 2;
 
-        floor_transform = floor_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
+        floor_transform = floor_transform.times(Mat4.scale(100, 8, 100).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
         this.shapes.square.draw(context, program_state, floor_transform, this.materials.test.override({color: hex_color("#7c837c")}));
 
-        // Create walls ( Each wall is 3 units away from the origin)
-
-        // Front Wall
-        var front_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, -3)).times(Mat4.rotation(0, 1, 0, 0)));
-        this.shapes.square.draw(context, program_state, front_wall_transform, this.materials.test.override({color: hex_color("#fdaaf2")}));
-
-        // Back Wall
-        var back_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(0, 0, 3)).times(Mat4.rotation(0, 1, 0, 0)));
-        this.shapes.square.draw(context, program_state, back_wall_transform, this.materials.test.override({color: hex_color("#0029ff")}));
-
-        // Left Wall
-        var left_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(-3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
-        this.shapes.square.draw(context, program_state, left_wall_transform, this.materials.test.override({color: hex_color("#6d379a")}));
-
-        // Right Wall
-        var right_wall_transform = model_transform.times(Mat4.scale(8, 8, 8).times(Mat4.translation(3, 0, 0)).times(Mat4.rotation(Math.PI / 2, 0, 1, 0)));
-        this.shapes.square.draw(context, program_state, right_wall_transform, this.materials.test.override({color: hex_color("#ff0000")}));
     }
 
     display(context, program_state) {
@@ -267,11 +254,55 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
+        // Small displacement so we can make walls seem double-sided but they're really not
+        const eps = 0.01; // 0.01 seems to work and not be visible
+
+        // Add all walls to this variable
+        var game_walls = [];
+
+        // Test walls forming the center box
         const my_wall = new Wall(vec3(0, -5, -4.5), vec3(0, 0, 1), 3, 6, this.materials.test.override({color: hex_color("#006600")}));
         const my_wall2 = new Wall(vec3(0, -5, -7.5), vec3(0, 0, -1), 3, 6, this.materials.test.override({color: hex_color("#003300")}));
         const my_wall3 = new Wall(vec3(-1.5, -5, -6), vec3(-1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#444444")}));
         const my_wall4 = new Wall(vec3(1.5, -5, -6), vec3(1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#666666")}));
-        const game_walls = [my_wall, my_wall2, my_wall3, my_wall4];
+        const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
+        game_walls = game_walls.concat(test_walls);
+
+        // First room
+        const rm1_front1 = new Wall(vec3(-15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
+        const rm1_front2 = new Wall(vec3(15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
+        const rm1_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
+        const rm1_left = new Wall(vec3(-25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall);
+        const rm1_right = new Wall(vec3(25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall);
+        const rm1 = [rm1_front1, rm1_front2, rm1_back, rm1_left, rm1_right];
+        game_walls = game_walls.concat(rm1);
+
+        // First room backwalls
+        const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.bwall);
+        const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.bwall);
+        const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm1_b = [rm1_front1_b, rm1_front2_b, rm1_back_b, rm1_left_b, rm1_right_b];
+        game_walls = game_walls.concat(rm1_b);
+
+        // Second room
+        const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.wall);
+        const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.wall);
+        //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
+        const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall);
+        const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall);
+        const rm2 = [rm2_front1, rm2_front2, rm2_left, rm2_right];
+        game_walls = game_walls.concat(rm2);
+
+        // Second room backwalls
+        const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.bwall);
+        //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
+        const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b];
+        game_walls = game_walls.concat(rm2_b);
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
