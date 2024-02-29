@@ -128,6 +128,7 @@ export class PortalGame extends Scene {
         this.s_pressed = false;
         this.d_pressed = false;
 
+        this.max_portaling_distance = 100.0;
         this.player_speed = 0.015;
         this.player = {
             orientation_up: 0.0,
@@ -149,6 +150,28 @@ export class PortalGame extends Scene {
             const position_delta = absolute_movement_dir.normalized().times(distance_moved);
             this.player.position = this.player.position.plus(position_delta);
         }
+    }
+
+    // Precondition: point_on_plane_of_wall is on the plane described by wall.normal and wall.center
+    is_planar_point_on_wall(wall, point_on_plane_of_wall) {
+        const p = point_on_plane_of_wall;
+        const point_of_contact_vertical = p[1] - wall.center[1];
+        const point_of_contact_horizontal = vec3(p[0], 0, p[2]).minus(vec3(wall.center[0], 0, wall.center[2])).norm();
+        const on_wall_vertical = Math.abs(point_of_contact_vertical) <= wall.height / 2;
+        const on_wall_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2;
+        return on_wall_vertical && on_wall_horizontal;
+    }
+
+    // All parameters are vec4's. Returns null if there is no intersection, otherwise the value t
+    // such that source + t * ray is on the plane.
+    ray_cast_to_plane(plane_normal, point_on_plane, ray, source) {
+        // Adapted from https://education.siggraph.org/static/HyperGraph/raytrace/rayplane_intersection.htm
+        const D = -plane_normal.dot(point_on_plane);
+        const vd = plane_normal.dot(ray);
+        if (vd >= 0) return null;
+        const v0 = -(plane_normal.dot(source) + D);
+        const t = v0 / vd;
+        return t >= 0 ? t : null;
     }
 
     // All parameters are vec4's.
@@ -213,6 +236,14 @@ export class PortalGame extends Scene {
         return this.player.position;
     }
 
+    attempt_shoot_portal1() {
+        // TODO
+    }
+
+    attempt_shoot_portal2() {
+        // TODO
+    }
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("move forward", ["w"],
@@ -224,6 +255,13 @@ export class PortalGame extends Scene {
             () => { this.a_pressed = true; }, "#6E6460", () => { this.a_pressed = false; });
         this.key_triggered_button("move right", ["d"],
             () => { this.d_pressed = true; }, "#6E6460", () => { this.d_pressed = false; });
+        this.new_line();
+        this.key_triggered_button("Shoot first portal", ["o"], () => {
+            this.attempt_shoot_portal1();
+        });
+        this.key_triggered_button("Shoot second portal", ["p"], () => {
+            this.attempt_shoot_portal2();
+        });
         this.new_line();
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
             console.log("Switch Mouse Mode");
@@ -442,6 +480,21 @@ export class PortalGame extends Scene {
         // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
         var body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
+
+        // When the player is looking at a plane, draw a sphere there.
+        const player_look_vector = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0)
+            .times(Mat4.rotation(this.player.orientation_up, 1, 0, 0))
+            .times(vec4(0, 0, -1, 0));
+        for (const wall of game_walls) {
+            const t = this.ray_cast_to_plane(wall.normal, wall.center, player_look_vector, this.player.position);
+            if (t !== null && t <= this.max_portaling_distance) {
+                const looking_point = this.player.position.plus(player_look_vector.times(t));
+                if (this.is_planar_point_on_wall(wall, looking_point)) {
+                    const sphere_transform = Mat4.translation(...xyz(looking_point)).times(Mat4.scale(0.2, 0.2, 0.2));
+                    this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.test.override({color: hex_color("#ff4040")}));
+                }
+            }
+        }
 
         // Set the camera for this frame
         const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
