@@ -29,6 +29,25 @@ class Wall {
     }
 }
 
+class Portal extends Wall {
+    // Portals are walls but also have a partner they teleport you to (potentially)
+    constructor(center, normal, width, height, material_off, material_on) {
+        super(center, normal, width, height, material_off);
+        this.material_on = material_on;
+    }
+
+    draw(context, program_state, square, isOn) {
+        const scale_mat = Mat4.scale(this.width / 2, this.height / 2, 1);
+        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
+
+        if(isOn) {
+            square.draw(context, program_state, model_transform, this.material_on);
+        } else {
+            square.draw(context, program_state, model_transform, this.material);
+        }
+    }
+}
+
 export class PortalGame extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
@@ -56,6 +75,10 @@ export class PortalGame extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#0083a0")}),
             bwall: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#7800a0")}),
+            portal_on: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#000000")}),
+            portal_off: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#444444")}),
         }
 
         this.w_pressed = false;
@@ -122,6 +145,30 @@ export class PortalGame extends Scene {
             // Otherwise the player is going around the wall.
         }
         return vec4(0, 0, 0, 0);
+    }
+
+    solve_player_collision_portal(in_portal, out_portal, player_radius, player_height) {
+        if(!(in_portal && out_portal)) {
+            return this.player.position;
+        }
+        const t = this.t_from_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
+        if (t < player_radius && t > -this.player_speed) {
+            const radius_component_not_inside_wall = Math.sqrt(player_radius**2 - t**2);
+            const point_of_contact = this.nearest_point_on_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
+            const point_of_contact_vertical = point_of_contact[1] - in_portal.center[1];
+            const point_of_contact_horizontal = vec3(point_of_contact[0], 0, point_of_contact[2]).minus(vec3(in_portal.center[0], 0, in_portal.center[2])).norm();
+            const wall_contact_vertical = point_of_contact_vertical <= in_portal.height / 2
+                || point_of_contact_vertical >= in_portal.height / 2 - player_height;
+            const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
+            if (wall_contact_vertical && wall_contact_horizontal) {
+                // Player has gone into the portal; spawn them out on the other side.
+                this.player.orientation_clockwise = Math.acos(-1 * out_portal.normal[2]);
+                return vec4(out_portal.center[0], 0, out_portal.center[2], 0).plus(out_portal.normal);
+                //return in_portal.normal.times(-(t - player_radius));
+            }
+            // Otherwise the player is going around the wall.
+        }
+        return this.player.position;
     }
 
     make_control_panel() {
@@ -228,10 +275,8 @@ export class PortalGame extends Scene {
     }
 
     draw_environment(context, program_state, environment_transform) {
-        var model_transform = Mat4.identity();
-
         // Draw floor at origin translated down by y = -0.5 units
-        var floor_transform = model_transform;
+        var floor_transform = Mat4.identity();
         var horizontal_angle = Math.PI / 2;
 
         floor_transform = floor_transform.times(Mat4.scale(100, 8, 100).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
@@ -254,6 +299,10 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
+        // Portal variables
+        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.portal_off, this.materials.portal_on);
+        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.portal_off, this.materials.portal_on);;
+
         // Small displacement so we can make walls seem double-sided but they're really not
         const eps = 0.01; // 0.01 seems to work and not be visible
 
@@ -272,8 +321,8 @@ export class PortalGame extends Scene {
         const rm1_front1 = new Wall(vec3(-15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
         const rm1_front2 = new Wall(vec3(15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
         const rm1_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm1_left = new Wall(vec3(-25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall);
-        const rm1_right = new Wall(vec3(25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall);
+        const rm1_left = new Wall(vec3(-25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall);
+        const rm1_right = new Wall(vec3(25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall);
         const rm1 = [rm1_front1, rm1_front2, rm1_back, rm1_left, rm1_right];
         game_walls = game_walls.concat(rm1);
 
@@ -312,6 +361,9 @@ export class PortalGame extends Scene {
                 const resolution_force = this.solve_player_collision(wall, 1.0, 2.0);
                 this.player.position = this.player.position.plus(resolution_force);
             }
+
+            this.player.position = this.solve_player_collision_portal(portal1, portal2, 1.0, 2.0);
+            this.player.position = this.solve_player_collision_portal(portal2, portal1, 1.0, 2.0);
         }
 
         // Create light for the 3-d plane
@@ -319,11 +371,20 @@ export class PortalGame extends Scene {
         var curr_color = color(1, 1, 1, 1);
         program_state.lights = [new Light(light_position, curr_color, 1)];
 
-        // Draw floor, walls
+        // Draw floor
         this.draw_environment(context, program_state);
 
+        // Draw walls
         for (const wall of game_walls) {
             wall.draw(context, program_state, this.shapes.square);
+        }
+
+        // Draw portals
+        if (portal1) {
+            portal1.draw(context, program_state, this.shapes.square, portal2);
+        }
+        if (portal2) {
+            portal2.draw(context, program_state, this.shapes.square, portal1);
         }
 
         // Create Body (A sphere below the player/camera transform)
