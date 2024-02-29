@@ -1,8 +1,10 @@
 import {defs, tiny} from './examples/common.js';
 
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
+
+const { Textured_Phong } = defs
 
 function clamp(x, min, max) {
     return x < min ? min : (x > max ? max : x);
@@ -79,6 +81,46 @@ export class PortalGame extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#000000")}),
             portal_off: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#444444")}),
+            asish_texture: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/asish.jpeg")
+            }),
+            wall_texture1: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.5, specularity: 1,
+                texture: new Texture("assets/wall-texture1.jpg")
+            }),
+            wall_texture2: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/wall-texture2.jpg")
+            }),
+            floor_texture: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/floor-texture.jpg")
+            }),
+            orange_portal_on: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/orange-portal-on.png")
+            }),
+            blue_portal_on: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/blue-portal-on.png")
+            }),
+            orange_portal_off: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/orange-portal-off.png")
+            }),
+            blue_portal_off: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/blue-portal-off.png")
+            }),
         }
 
         this.w_pressed = false;
@@ -280,7 +322,7 @@ export class PortalGame extends Scene {
         var horizontal_angle = Math.PI / 2;
 
         floor_transform = floor_transform.times(Mat4.scale(100, 8, 100).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
-        this.shapes.square.draw(context, program_state, floor_transform, this.materials.test.override({color: hex_color("#7c837c")}));
+        this.shapes.square.draw(context, program_state, floor_transform, this.materials.floor_texture);
 
     }
 
@@ -300,8 +342,8 @@ export class PortalGame extends Scene {
         program_state.animate = this.has_pointer_lock;
 
         // Portal variables
-        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.portal_off, this.materials.portal_on);
-        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.portal_off, this.materials.portal_on);;
+        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.portal_off, this.materials.orange_portal_on);
+        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.portal_off, this.materials.blue_portal_on);
 
         // Small displacement so we can make walls seem double-sided but they're really not
         const eps = 0.01; // 0.01 seems to work and not be visible
@@ -310,46 +352,55 @@ export class PortalGame extends Scene {
         var game_walls = [];
 
         // Test walls forming the center box
-        const my_wall = new Wall(vec3(0, -5, -4.5), vec3(0, 0, 1), 3, 6, this.materials.test.override({color: hex_color("#006600")}));
-        const my_wall2 = new Wall(vec3(0, -5, -7.5), vec3(0, 0, -1), 3, 6, this.materials.test.override({color: hex_color("#003300")}));
-        const my_wall3 = new Wall(vec3(-1.5, -5, -6), vec3(-1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#444444")}));
-        const my_wall4 = new Wall(vec3(1.5, -5, -6), vec3(1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#666666")}));
+
+        // Original Collision Box Code: Draws box in solid colors
+        // const my_wall = new Wall(vec3(0, -5, -4.5), vec3(0, 0, 1), 3, 6, this.materials.test.override({color: hex_color("#006600")}));
+        // const my_wall2 = new Wall(vec3(0, -5, -7.5), vec3(0, 0, -1), 3, 6, this.materials.test.override({color: hex_color("#003300")}));
+        // const my_wall3 = new Wall(vec3(-1.5, -5, -6), vec3(-1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#444444")}));
+        // const my_wall4 = new Wall(vec3(1.5, -5, -6), vec3(1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#666666")}));
+
+        // Collision Box Code: Uses Asish Texture for walls, moved box to be visible above floor
+        const my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture);
+        const my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture);
+        const my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture);
+        const my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture);
         const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
+
         game_walls = game_walls.concat(test_walls);
 
         // First room
-        const rm1_front1 = new Wall(vec3(-15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
-        const rm1_front2 = new Wall(vec3(15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall);
-        const rm1_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm1_left = new Wall(vec3(-25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall);
-        const rm1_right = new Wall(vec3(25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall);
+        const rm1_front1 = new Wall(vec3(-15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall_texture1);
+        const rm1_front2 = new Wall(vec3(15, 0, -25), vec3(0, 0, 1), 20, 10, this.materials.wall_texture1);
+        const rm1_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall_texture1);
+        const rm1_left = new Wall(vec3(-25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall_texture1);
+        const rm1_right = new Wall(vec3(25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture1);
         const rm1 = [rm1_front1, rm1_front2, rm1_back, rm1_left, rm1_right];
         game_walls = game_walls.concat(rm1);
 
         // First room backwalls
-        const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.bwall);
-        const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.bwall);
-        const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.bwall);
-        const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
-        const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
         const rm1_b = [rm1_front1_b, rm1_front2_b, rm1_back_b, rm1_left_b, rm1_right_b];
         game_walls = game_walls.concat(rm1_b);
 
         // Second room
-        const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.wall);
+        const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.wall_texture1);
+        const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.wall_texture1);
         //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall);
-        const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall);
+        const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall_texture1);
+        const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture1);
         const rm2 = [rm2_front1, rm2_front2, rm2_left, rm2_right];
         game_walls = game_walls.concat(rm2);
 
         // Second room backwalls
-        const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.bwall);
-        const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.bwall);
+        const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.wall_texture2);
         //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
-        const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.bwall);
+        const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
         const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b];
         game_walls = game_walls.concat(rm2_b);
 
