@@ -4,7 +4,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const { Textured_Phong } = defs
+const {Textured_Phong} = defs
 
 function clamp(x, min, max) {
     return x < min ? min : (x > max ? max : x);
@@ -42,7 +42,7 @@ class Portal extends Wall {
         const scale_mat = Mat4.scale(this.width / 2, this.height / 2, 1);
         const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
 
-        if(isOn) {
+        if (isOn) {
             square.draw(context, program_state, model_transform, this.material_on);
         } else {
             square.draw(context, program_state, model_transform, this.material);
@@ -196,12 +196,12 @@ export class PortalGame extends Scene {
     solve_player_collision(wall, player_radius, player_height) {
         const t = this.t_from_plane_to_point(wall.normal, wall.center, this.player.position);
         if (t < player_radius && t > -this.player_speed) {
-            const radius_component_not_inside_wall = Math.sqrt(player_radius**2 - t**2);
+            const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
             const point_of_contact = this.nearest_point_on_plane_to_point(wall.normal, wall.center, this.player.position);
             const point_of_contact_vertical = point_of_contact[1] - wall.center[1];
             const point_of_contact_horizontal = vec3(point_of_contact[0], 0, point_of_contact[2]).minus(vec3(wall.center[0], 0, wall.center[2])).norm();
             const wall_contact_vertical = point_of_contact_vertical <= wall.height / 2
-                                          || point_of_contact_vertical >= wall.height / 2 - player_height;
+                || point_of_contact_vertical >= wall.height / 2 - player_height;
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
                 // Player has gone into the wall; need to push them back out.
@@ -213,12 +213,12 @@ export class PortalGame extends Scene {
     }
 
     solve_player_collision_portal(in_portal, out_portal, player_radius, player_height) {
-        if(!(in_portal && out_portal)) {
+        if (!(in_portal && out_portal)) {
             return this.player.position;
         }
         const t = this.t_from_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
         if (t < player_radius && t > -this.player_speed) {
-            const radius_component_not_inside_wall = Math.sqrt(player_radius**2 - t**2);
+            const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
             const point_of_contact = this.nearest_point_on_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
             const point_of_contact_vertical = point_of_contact[1] - in_portal.center[1];
             const point_of_contact_horizontal = vec3(point_of_contact[0], 0, point_of_contact[2]).minus(vec3(in_portal.center[0], 0, in_portal.center[2])).norm();
@@ -236,6 +236,31 @@ export class PortalGame extends Scene {
         return this.player.position;
     }
 
+    // Returns [null, null, Infinity] if the player is not looking at any wall. Otherwise
+    // returns [wall, vec, t], where wall is the closest wall in the direction
+    // the player is looking, vec is a vec4 of the point on the wall the player is looking at,
+    // and t is the distance in their view direction to the wall.
+    determine_player_look_at(walls) {
+        const player_look_vector = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0)
+            .times(Mat4.rotation(this.player.orientation_up, 1, 0, 0))
+            .times(vec4(0, 0, -1, 0));
+        let min_t = Infinity;
+        let nearest_wall = null;
+        let look_at_point = null;
+        for (const wall of walls) {
+            const t = this.ray_cast_to_plane(wall.normal, wall.center, player_look_vector, this.player.position);
+            if (t !== null && t <= this.max_portaling_distance) {
+                const looking_point = this.player.position.plus(player_look_vector.times(t));
+                if (this.is_planar_point_on_wall(wall, looking_point) && t < min_t) {
+                    min_t = t;
+                    nearest_wall = wall;
+                    look_at_point = looking_point;
+                }
+            }
+        }
+        return [nearest_wall, look_at_point, min_t];
+    }
+
     attempt_shoot_portal1() {
         // TODO
     }
@@ -247,14 +272,30 @@ export class PortalGame extends Scene {
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("move forward", ["w"],
-        () => { this.w_pressed = true; }, "#6E6460", () => { this.w_pressed = false; });
+            () => {
+                this.w_pressed = true;
+            }, "#6E6460", () => {
+                this.w_pressed = false;
+            });
         this.key_triggered_button("move back", ["s"],
-            () => { this.s_pressed = true; }, "#6E6460", () => { this.s_pressed = false; });
+            () => {
+                this.s_pressed = true;
+            }, "#6E6460", () => {
+                this.s_pressed = false;
+            });
         this.new_line();
         this.key_triggered_button("move left", ["a"],
-            () => { this.a_pressed = true; }, "#6E6460", () => { this.a_pressed = false; });
+            () => {
+                this.a_pressed = true;
+            }, "#6E6460", () => {
+                this.a_pressed = false;
+            });
         this.key_triggered_button("move right", ["d"],
-            () => { this.d_pressed = true; }, "#6E6460", () => { this.d_pressed = false; });
+            () => {
+                this.d_pressed = true;
+            }, "#6E6460", () => {
+                this.d_pressed = false;
+            });
         this.new_line();
         this.key_triggered_button("Shoot first portal", ["o"], () => {
             this.attempt_shoot_portal1();
@@ -305,15 +346,14 @@ export class PortalGame extends Scene {
             if (can_attempt_pointer_lock) {
                 // The WebStorm warning can be ignored, it's because unadjustedMovement isn't supported everywhere:
                 // https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock#browser_compatibility
-                dark_overlay.requestPointerLock({ unadjustedMovement: true });
+                dark_overlay.requestPointerLock({unadjustedMovement: true});
             }
         });
         document.addEventListener("pointerlockchange", () => {
             this.has_pointer_lock = !!document.pointerLockElement;
             if (this.has_pointer_lock) {
                 dark_overlay.style.visibility = "hidden";
-            }
-            else {
+            } else {
                 // The user has disengaged the pointer lock.
                 // We get an error if we retry requestPointerLock too quickly (even if the user is responsible by clicking),
                 // so wait a while before letting the user try again.
@@ -336,18 +376,17 @@ export class PortalGame extends Scene {
                 // On Tom's laptop at both 100% and 200% display scaling it gives results that
                 // agree between Chrome and Firefox.
                 // TODO test on Safari
-                const scaling_factor = browser_is_firefox ? 1/window.devicePixelRatio : 1.0;
+                const scaling_factor = browser_is_firefox ? 1 / window.devicePixelRatio : 1.0;
                 const movementX = scaling_factor * e.movementX;
                 const movementY = scaling_factor * e.movementY;
 
                 const delta_up = movementY * -0.005;
                 const delta_clockwise = movementX * 0.005;
-                this.player.orientation_up = clamp(this.player.orientation_up + delta_up, -Math.PI/2, Math.PI/2);
+                this.player.orientation_up = clamp(this.player.orientation_up + delta_up, -Math.PI / 2, Math.PI / 2);
                 this.player.orientation_clockwise += delta_clockwise;
                 if (this.player.orientation_clockwise > Math.PI) {
-                    this.player.orientation_clockwise -= 2*Math.PI;
-                }
-                else if (this.player.orientation_clockwise < -Math.PI) {
+                    this.player.orientation_clockwise -= 2 * Math.PI;
+                } else if (this.player.orientation_clockwise < -Math.PI) {
                     this.player.orientation_clockwise += 2 * Math.PI;
                 }
             }
@@ -482,18 +521,10 @@ export class PortalGame extends Scene {
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
 
         // When the player is looking at a plane, draw a sphere there.
-        const player_look_vector = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0)
-            .times(Mat4.rotation(this.player.orientation_up, 1, 0, 0))
-            .times(vec4(0, 0, -1, 0));
-        for (const wall of game_walls) {
-            const t = this.ray_cast_to_plane(wall.normal, wall.center, player_look_vector, this.player.position);
-            if (t !== null && t <= this.max_portaling_distance) {
-                const looking_point = this.player.position.plus(player_look_vector.times(t));
-                if (this.is_planar_point_on_wall(wall, looking_point)) {
-                    const sphere_transform = Mat4.translation(...xyz(looking_point)).times(Mat4.scale(0.2, 0.2, 0.2));
-                    this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.test.override({color: hex_color("#ff4040")}));
-                }
-            }
+        const [_wall, look_at_point, _look_at_t] = this.determine_player_look_at(game_walls);
+        if (look_at_point !== null) {
+            const sphere_transform = Mat4.translation(...xyz(look_at_point)).times(Mat4.scale(0.2, 0.2, 0.2));
+            this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.test.override({color: hex_color("#ff4040")}));
         }
 
         // Set the camera for this frame
