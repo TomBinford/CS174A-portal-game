@@ -77,10 +77,6 @@ export class PortalGame extends Scene {
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#0083a0")}),
             bwall: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#7800a0")}),
-            portal_on: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#000000")}),
-            portal_off: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#444444")}),
             asish_texture: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
@@ -102,23 +98,23 @@ export class PortalGame extends Scene {
                 texture: new Texture("assets/floor-texture.jpg")
             }),
             orange_portal_on: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#000000"),
+                ambient: 1.0, diffusivity: 0.5, specularity: 0.5,
                 texture: new Texture("assets/orange-portal-on.png")
             }),
             blue_portal_on: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#000000"),
+                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/blue-portal-on.png")
             }),
             orange_portal_off: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#000000"),
+                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/orange-portal-off.png")
             }),
             blue_portal_off: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#000000"),
+                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/blue-portal-off.png")
             }),
         }
@@ -127,6 +123,8 @@ export class PortalGame extends Scene {
         this.a_pressed = false;
         this.s_pressed = false;
         this.d_pressed = false;
+
+        this.asish_mode = false;
 
         this.max_portaling_distance = 100.0;
         this.player_speed = 0.015;
@@ -307,6 +305,10 @@ export class PortalGame extends Scene {
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
             console.log("Switch Mouse Mode");
         });
+        this.new_line();
+        this.key_triggered_button("Toggle Asish Mode", ["x"], () => {
+            this.asish_mode ^= 1;
+        });
     }
 
     // Called the first time display() is called.
@@ -429,18 +431,27 @@ export class PortalGame extends Scene {
         var game_walls = [];
 
         // Test walls forming the center box
+        // Note: to implement asish_mode, I had to make the my_walls vars instead of const due to scoping issues
 
-        // Original Collision Box Code: Draws box in solid colors
-        // const my_wall = new Wall(vec3(0, -5, -4.5), vec3(0, 0, 1), 3, 6, this.materials.test.override({color: hex_color("#006600")}));
-        // const my_wall2 = new Wall(vec3(0, -5, -7.5), vec3(0, 0, -1), 3, 6, this.materials.test.override({color: hex_color("#003300")}));
-        // const my_wall3 = new Wall(vec3(-1.5, -5, -6), vec3(-1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#444444")}));
-        // const my_wall4 = new Wall(vec3(1.5, -5, -6), vec3(1, 0, 0), 3, 6, this.materials.test.override({color: hex_color("#666666")}));
+        var my_wall;
+        var my_wall2;
+        var my_wall3;
+        var my_wall4;
+        if (this.asish_mode) {
+            // Collision Box Code: Uses Asish Texture for walls, moved box to be visible above floor
+            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture);
+            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture);
+            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture);
+            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture);
+        }
+        else {
+            // Original Collision Box Code: Draws box in solid colors
+            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.wall_texture2);
+            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.wall_texture2);
+            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.wall_texture2);
+            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.wall_texture2);
+        }
 
-        // Collision Box Code: Uses Asish Texture for walls, moved box to be visible above floor
-        const my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture);
-        const my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture);
-        const my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture);
-        const my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture);
         const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
 
         game_walls = game_walls.concat(test_walls);
