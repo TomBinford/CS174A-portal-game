@@ -421,8 +421,8 @@ export class PortalGame extends Scene {
         program_state.animate = this.has_pointer_lock;
 
         // Portal variables
-        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.portal_off, this.materials.orange_portal_on);
-        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.portal_off, this.materials.blue_portal_on);
+        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
+        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
 
         // Small displacement so we can make walls seem double-sided but they're really not
         const eps = 0.01; // 0.01 seems to work and not be visible
