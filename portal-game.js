@@ -126,7 +126,13 @@ export class PortalGame extends Scene {
 
         this.asish_mode = false;
 
-        this.max_portaling_distance = 100.0;
+        // Portal variables
+        this.portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
+        this.portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
+        this.max_portaling_distance = 150.0;
+        this.requested_portal1_shoot = false;
+        this.requested_portal2_shoot = false;
+
         this.player_speed = 0.015;
         this.player = {
             orientation_up: 0.0,
@@ -235,9 +241,9 @@ export class PortalGame extends Scene {
     }
 
     // Returns [null, null, Infinity] if the player is not looking at any wall. Otherwise
-    // returns [wall, vec, t], where wall is the closest wall in the direction
-    // the player is looking, vec is a vec4 of the point on the wall the player is looking at,
-    // and t is the distance in their view direction to the wall.
+    //  returns [wall, vec, t], where wall is the closest wall in the direction
+    //  the player is looking, vec is a vec4 of the point on the wall the player is looking at,
+    //  and t is the distance in their view direction to the wall.
     determine_player_look_at(walls) {
         const player_look_vector = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0)
             .times(Mat4.rotation(this.player.orientation_up, 1, 0, 0))
@@ -246,8 +252,12 @@ export class PortalGame extends Scene {
         let nearest_wall = null;
         let look_at_point = null;
         for (const wall of walls) {
+            if (wall.normal.dot(player_look_vector) >= 0) {
+                // Only consider walls which the player is looking at the front of.
+                continue;
+            }
             const t = this.ray_cast_to_plane(wall.normal, wall.center, player_look_vector, this.player.position);
-            if (t !== null && t <= this.max_portaling_distance) {
+            if (t !== null) {
                 const looking_point = this.player.position.plus(player_look_vector.times(t));
                 if (this.is_planar_point_on_wall(wall, looking_point) && t < min_t) {
                     min_t = t;
@@ -259,12 +269,26 @@ export class PortalGame extends Scene {
         return [nearest_wall, look_at_point, min_t];
     }
 
-    attempt_shoot_portal1() {
-        // TODO
-    }
-
-    attempt_shoot_portal2() {
-        // TODO
+    // Returns null if no portal could be created, otherwise a new Portal object
+    // placed on the wall the player shot at.
+    try_create_portal(walls, material_off, material_on) {
+        const [wall, look_at_point, t] = this.determine_player_look_at(walls);
+        if (wall === null || t > this.max_portaling_distance) {
+            return null;
+        }
+        // Return null if the edges of the portal would go outside the bounds of wall.
+        const width = 5.0;
+        const height = 5.0;
+        const top = look_at_point.plus(vec4(0, height / 2, 0, 0));
+        const bottom = look_at_point.plus(vec4(0, -height / 2, 0, 0));
+        const left = look_at_point.plus(wall.normal.cross(vec4(0, width / 2, 0, 0)));
+        const right = look_at_point.plus(wall.normal.cross(vec4(0, -width / 2, 0, 0)));
+        const portal_fits_on_wall = [top, bottom, left, right].every(p => this.is_planar_point_on_wall(wall, p));
+        if (!portal_fits_on_wall) {
+            return null;
+        }
+        // TODO return null if the new portal would overlap with the existing *other* portal.
+        return new Portal(look_at_point.plus(wall.normal.times(0.01)), wall.normal, width,  height, material_off, material_on);
     }
 
     make_control_panel() {
@@ -296,10 +320,14 @@ export class PortalGame extends Scene {
             });
         this.new_line();
         this.key_triggered_button("Shoot first portal", ["o"], () => {
-            this.attempt_shoot_portal1();
+            if (this.has_pointer_lock) {
+                this.requested_portal1_shoot = true;
+            }
         });
         this.key_triggered_button("Shoot second portal", ["p"], () => {
-            this.attempt_shoot_portal2();
+            if (this.has_pointer_lock) {
+                this.requested_portal2_shoot = true;
+            }
         });
         this.new_line();
         this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
@@ -420,9 +448,6 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
-        // Portal variables
-        var portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
-        var portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
 
         // Small displacement so we can make walls seem double-sided but they're really not
         const eps = 0.01; // 0.01 seems to work and not be visible
@@ -501,8 +526,23 @@ export class PortalGame extends Scene {
                 this.player.position = this.player.position.plus(resolution_force);
             }
 
-            this.player.position = this.solve_player_collision_portal(portal1, portal2, 1.0, 2.0);
-            this.player.position = this.solve_player_collision_portal(portal2, portal1, 1.0, 2.0);
+            this.player.position = this.solve_player_collision_portal(this.portal1, this.portal2, 1.0, 2.0);
+            this.player.position = this.solve_player_collision_portal(this.portal2, this.portal1, 1.0, 2.0);
+
+            if (this.requested_portal1_shoot) {
+                this.requested_portal1_shoot = false;
+                const new_portal = this.try_create_portal(game_walls, this.materials.orange_portal_off, this.materials.orange_portal_on);
+                if (new_portal !== null) {
+                    this.portal1 = new_portal;
+                }
+            }
+            if (this.requested_portal2_shoot) {
+                this.requested_portal2_shoot = false;
+                const new_portal = this.try_create_portal(game_walls, this.materials.blue_portal_off, this.materials.blue_portal_on);
+                if (new_portal !== null) {
+                    this.portal2 = new_portal;
+                }
+            }
         }
 
         // Create light for the 3-d plane
@@ -519,11 +559,11 @@ export class PortalGame extends Scene {
         }
 
         // Draw portals
-        if (portal1) {
-            portal1.draw(context, program_state, this.shapes.square, portal2);
+        if (this.portal1) {
+            this.portal1.draw(context, program_state, this.shapes.square, this.portal2);
         }
-        if (portal2) {
-            portal2.draw(context, program_state, this.shapes.square, portal1);
+        if (this.portal2) {
+            this.portal2.draw(context, program_state, this.shapes.square, this.portal1);
         }
 
         // Create Body (A sphere below the player/camera transform)
