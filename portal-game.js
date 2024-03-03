@@ -231,9 +231,8 @@ export class PortalGame extends Scene {
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
                 // Player has gone into the portal; spawn them out on the other side.
-                this.player.orientation_clockwise = Math.acos(-1 * out_portal.normal[2]);
+                this.player.orientation_clockwise = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
                 return vec4(out_portal.center[0], 0, out_portal.center[2], 0).plus(out_portal.normal);
-                //return in_portal.normal.times(-(t - player_radius));
             }
             // Otherwise the player is going around the wall.
         }
