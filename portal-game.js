@@ -455,28 +455,12 @@ export class PortalGame extends Scene {
         // Add all walls to this variable
         var game_walls = [];
 
-        // Test walls forming the center box
-        // Note: to implement asish_mode, I had to make the my_walls vars instead of const due to scoping issues
-
-        var my_wall;
-        var my_wall2;
-        var my_wall3;
-        var my_wall4;
-        if (this.asish_mode) {
-            // Collision Box Code: Uses Asish Texture for walls, moved box to be visible above floor
-            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture, true);
-            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture, true);
-            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture, true);
-            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture, true);
-        }
-        else {
-            // Original Collision Box Code: Draws box in solid colors
-            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.wall_texture2, true);
-            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.wall_texture2, true);
-            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.wall_texture2, true);
-            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.wall_texture2, true);
-        }
-
+        // Test walls forming the center box. Texture depends on whether asish mode is enabled.
+        const box_material = this.asish_mode ? this.materials.asish_texture : this.materials.wall_texture2;
+        const my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, box_material, true);
+        const my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, box_material, true);
+        const my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, box_material, true);
+        const my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, box_material, true);
         const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
 
         game_walls = game_walls.concat(test_walls);
