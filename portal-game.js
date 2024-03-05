@@ -16,12 +16,13 @@ function xyz(vec) {
 
 class Wall {
     // center and normal are vec4's.
-    constructor(center, normal, width, height, material) {
+    constructor(center, normal, width, height, material, always_draw = false) {
         this.center = center;
         this.width = width;
         this.height = height;
         this.normal = normal.normalized();
         this.material = material;
+        this.always_draw = always_draw;
     }
 
     draw(context, program_state, square) {
@@ -463,17 +464,17 @@ export class PortalGame extends Scene {
         var my_wall4;
         if (this.asish_mode) {
             // Collision Box Code: Uses Asish Texture for walls, moved box to be visible above floor
-            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture);
-            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture);
-            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture);
-            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture);
+            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.asish_texture, true);
+            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.asish_texture, true);
+            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.asish_texture, true);
+            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.asish_texture, true);
         }
         else {
             // Original Collision Box Code: Draws box in solid colors
-            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.wall_texture2);
-            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.wall_texture2);
-            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.wall_texture2);
-            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.wall_texture2);
+            my_wall = new Wall(vec3(0, -2, -4.5), vec3(0, 0, 1), 3, 3, this.materials.wall_texture2, true);
+            my_wall2 = new Wall(vec3(0, -2, -7.5), vec3(0, 0, -1), 3, 3, this.materials.wall_texture2, true);
+            my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, this.materials.wall_texture2, true);
+            my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, this.materials.wall_texture2, true);
         }
 
         const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
@@ -489,32 +490,32 @@ export class PortalGame extends Scene {
         const rm1 = [rm1_front1, rm1_front2, rm1_back, rm1_left, rm1_right];
         game_walls = game_walls.concat(rm1);
 
-        // // First room backwalls
-        // const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
-        // const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
-        // const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        // const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        // const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        // const rm1_b = [rm1_front1_b, rm1_front2_b, rm1_back_b, rm1_left_b, rm1_right_b];
-        // game_walls = game_walls.concat(rm1_b);
+        // First room backwalls
+        const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_b = [rm1_front1_b, rm1_front2_b, rm1_back_b, rm1_left_b, rm1_right_b];
+        game_walls = game_walls.concat(rm1_b);
 
         // Second room
-        const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.test.override({color: hex_color("#ff4040")}));
-        const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.test.override({color: hex_color("#ff4040")}));
+        const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.wall_texture1);
+        const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.wall_texture1);
         //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.test.override({color: hex_color("#ff4040")}));
-        const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.test.override({color: hex_color("#ff4040")}));
+        const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall_texture1);
+        const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture1);
         const rm2 = [rm2_front1, rm2_front2, rm2_left, rm2_right];
         game_walls = game_walls.concat(rm2);
 
-        // // Second room backwalls
-        // const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.test.override({color: hex_color("#0066ff")}));
-        // const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.test.override({color: hex_color("#0066ff")}));
-        // //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        // const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.test.override({color: hex_color("#0066ff")}));
-        // const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.test.override({color: hex_color("#0066ff")}));
-        // const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b];
-        // game_walls = game_walls.concat(rm2_b);
+        // Second room backwalls
+        const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.wall_texture2);
+        //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
+        const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b];
+        game_walls = game_walls.concat(rm2_b);
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
@@ -549,12 +550,28 @@ export class PortalGame extends Scene {
         var curr_color = color(1, 1, 1, 1);
         program_state.lights = [new Light(light_position, curr_color, 1)];
 
+        // Set the camera for this frame
+        const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
+        const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
+        program_state.set_camera(Mat4.inverse(player_transform));
+
         // Draw floor
         this.draw_environment(context, program_state);
 
         // Draw walls
         for (const wall of game_walls) {
-            wall.draw(context, program_state, this.shapes.square);
+            if (wall.always_draw) {
+                wall.draw(context, program_state, this.shapes.square);
+                continue;
+            }
+            // Only draw walls whose front side is facing the player. This prevents visual artifacts
+            // with our pairs of walls with opposite normals and different textures placed close together.
+            // Adapted from:https://stackoverflow.com/questions/15688232/check-which-side-of-a-plane-points-are-on
+            const d = -wall.center.dot(wall.normal);
+            const dot = wall.normal.dot(this.player.position) + d;
+            if (dot >= 0) {
+                wall.draw(context, program_state, this.shapes.square);
+            }
         }
 
         // Draw portals
@@ -576,10 +593,5 @@ export class PortalGame extends Scene {
             const sphere_transform = Mat4.translation(...xyz(look_at_point)).times(Mat4.scale(0.2, 0.2, 0.2));
             this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.test.override({color: hex_color("#ff4040")}));
         }
-
-        // Set the camera for this frame
-        const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
-        const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
-        program_state.set_camera(Mat4.inverse(player_transform));
     }
 }
