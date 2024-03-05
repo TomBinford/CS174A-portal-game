@@ -272,21 +272,40 @@ export class PortalGame extends Scene {
     // Returns null if no portal could be created, otherwise a new Portal object
     // placed on the wall the player shot at.
     try_create_portal(walls, material_off, material_on) {
-        const [wall, look_at_point, t] = this.determine_player_look_at(walls);
+        let [wall, look_at_point, t] = this.determine_player_look_at(walls);
         if (wall === null || t > this.max_portaling_distance) {
             return null;
         }
-        // Return null if the edges of the portal would go outside the bounds of wall.
         const width = 5.0;
         const height = 5.0;
-        const top = look_at_point.plus(vec4(0, height / 2, 0, 0));
-        const bottom = look_at_point.plus(vec4(0, -height / 2, 0, 0));
-        const left = look_at_point.plus(wall.normal.cross(vec4(0, width / 2, 0, 0)));
-        const right = look_at_point.plus(wall.normal.cross(vec4(0, -width / 2, 0, 0)));
-        const portal_fits_on_wall = [top, bottom, left, right].every(p => this.is_planar_point_on_wall(wall, p));
-        if (!portal_fits_on_wall) {
+        if (width > wall.width || height > wall.height) {
             return null;
         }
+        // "Smart" portal placement: if the portal would go outside the wall, snap it inside the wall.
+        const vertical_dist = look_at_point[1] - wall.center[1];
+        // Snap vertically
+        if (vertical_dist > wall.height / 2 - height / 2) {
+            look_at_point[1] = (wall.center[1] + wall.height / 2) - height / 2;
+        }
+        else if (vertical_dist < -wall.height / 2 + height / 2) {
+            look_at_point[1] = (wall.center[1] - wall.height / 2) + height / 2;
+        }
+
+        const relative_horizontal_pos = vec3(look_at_point[0], 0, look_at_point[2]).minus(vec3(wall.center[0], 0, wall.center[2]));
+        const horizontal_dist = xyz(wall.normal).cross(relative_horizontal_pos)[1];
+        // Snap horizontally
+        if (horizontal_dist < -wall.width / 2 + width / 2) {
+            const left_point = wall.center.plus(xyz(wall.normal).cross(vec3(0, wall.width / 2 - width / 2, 0)));
+            look_at_point[0] = left_point[0];
+            look_at_point[2] = left_point[2];
+        }
+        else if (horizontal_dist > wall.width / 2 - width / 2) {
+            const right_point = wall.center.plus(xyz(wall.normal).cross(vec3(0, -wall.width / 2 + width / 2, 0)));
+            look_at_point[0] = right_point[0];
+            look_at_point[2] = right_point[2];
+        }
+
+        // At this point, the portal is guaranteed to be on the wall.
         // TODO return null if the new portal would overlap with the existing *other* portal.
         return new Portal(look_at_point.plus(wall.normal.times(0.01)), wall.normal, width,  height, material_off, material_on);
     }
