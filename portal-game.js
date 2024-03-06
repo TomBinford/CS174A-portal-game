@@ -72,15 +72,10 @@ export class PortalGame extends Scene {
 
         // *** Materials
         this.materials = {
-            test: new Material(new defs.Phong_Shader(),
+            body: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
-            wall: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#0083a0")}),
-            bwall: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#7800a0")}),
             asish_texture: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
+                ambient: 1.0,
                 texture: new Texture("assets/asish.jpeg")
             }),
             wall_texture1: new Material(new Textured_Phong(), {
@@ -99,23 +94,19 @@ export class PortalGame extends Scene {
                 texture: new Texture("assets/floor-texture.jpg")
             }),
             orange_portal_on: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1.0, diffusivity: 0.5, specularity: 0.5,
+                ambient: 1.0,
                 texture: new Texture("assets/orange-portal-on.png")
             }),
             blue_portal_on: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
+                ambient: 1.0,
                 texture: new Texture("assets/blue-portal-on.png")
             }),
             orange_portal_off: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
+                ambient: 1.0,
                 texture: new Texture("assets/orange-portal-off.png")
             }),
             blue_portal_off: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1.0, diffusivity: 0.1, specularity: 0.1,
+                ambient: 1.0,
                 texture: new Texture("assets/blue-portal-off.png")
             }),
         }
@@ -349,13 +340,23 @@ export class PortalGame extends Scene {
             }
         });
         this.new_line();
-        this.key_triggered_button("Switch Mouse Mode", ["Control", "1"], () => {
-            console.log("Switch Mouse Mode");
-        });
-        this.new_line();
         this.key_triggered_button("Toggle Asish Mode", ["x"], () => {
             this.asish_mode ^= 1;
         });
+        this.new_line();
+        this.key_triggered_button("Toggle Portal 1", ["Control", "1"], () => {
+            this.portal1 = null;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle Portal 2", ["Control", "2"], () => {
+            this.portal2 = null;
+        });
+        this.new_line();
+        this.key_triggered_button("Toggle All Portals", ["Control", "3"], () => {
+            this.portal1 = null;
+            this.portal2 = null;
+        });
+
     }
 
     // Called the first time display() is called.
@@ -588,13 +589,13 @@ export class PortalGame extends Scene {
         // Create Body (A sphere below the player/camera transform)
         // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
         var body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
-        this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.test);
+        this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.body);
 
         // When the player is looking at a plane, draw a sphere there.
         const [_wall, look_at_point, _look_at_t] = this.determine_player_look_at(game_walls);
         if (look_at_point !== null) {
             const sphere_transform = Mat4.translation(...xyz(look_at_point)).times(Mat4.scale(0.2, 0.2, 0.2));
-            this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.test.override({color: hex_color("#ff4040")}));
+            this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({color: hex_color("#ff4040")}));
         }
     }
 }
