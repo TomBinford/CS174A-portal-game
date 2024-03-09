@@ -222,8 +222,22 @@ export class PortalGame extends Scene {
                 || point_of_contact_vertical >= in_portal.height / 2 - player_height;
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
+                let in_vec = vec3(Math.sin(this.player.orientation_clockwise), 0, -Math.cos(this.player.orientation_clockwise));
+                let in_opp_normal = in_portal.normal.times(-1);
+                let flip = in_opp_normal.dot(in_vec) < 0;
+                let crossed = in_opp_normal.cross(in_vec);
+                let dir = Math.sign(crossed[1]);
+                let player_in_angle = Math.asin(crossed.norm());
+                player_in_angle *= dir;
+                let out_portal_angle = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
+
+                if(flip) {
+                    this.player.orientation_clockwise = (Math.PI + out_portal_angle) - player_in_angle;
+                } else {
+                    this.player.orientation_clockwise = out_portal_angle + player_in_angle;
+                }
+
                 // Player has gone into the portal; spawn them out on the other side.
-                this.player.orientation_clockwise = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
                 return vec4(out_portal.center[0], 0, out_portal.center[2], 0).plus(out_portal.normal);
             }
             // Otherwise the player is going around the wall.
@@ -448,7 +462,7 @@ export class PortalGame extends Scene {
         var floor_transform = Mat4.identity();
         var horizontal_angle = Math.PI / 2;
 
-        floor_transform = floor_transform.times(Mat4.scale(100, 8, 100).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
+        floor_transform = floor_transform.times(Mat4.scale(100, 8, 120).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
         this.shapes.square.draw(context, program_state, floor_transform, this.materials.floor_texture);
 
     }
@@ -468,12 +482,16 @@ export class PortalGame extends Scene {
         // Pause everything if we don't have the pointer lock.
         program_state.animate = this.has_pointer_lock;
 
-
-        // Small displacement so we can make walls seem double-sided but they're really not
-        const eps = 0.01; // 0.01 seems to work and not be visible
-
         // Add all walls to this variable
         var game_walls = [];
+
+        // Border walls
+        const border_top = new Wall(vec3(0, 0, -120), vec3(0, 0, 1), 200, 10, this.materials.wall_texture1);
+        const border_bottom = new Wall(vec3(0, 0, 120), vec3(0, 0, -1), 200, 10, this.materials.wall_texture1);
+        const border_left = new Wall(vec3(-100, 0, 0), vec3(1, 0, 0), 240, 10, this.materials.wall_texture1);
+        const border_right = new Wall(vec3(100, 0, 0), vec3(-1, 0, 0), 240, 10, this.materials.wall_texture1);
+        const border = [border_top, border_bottom, border_left, border_right];
+        game_walls = game_walls.concat(border);
 
         // Test walls forming the center box. Texture depends on whether asish mode is enabled.
         const box_material = this.asish_mode ? this.materials.asish_texture : this.materials.wall_texture2;
@@ -482,7 +500,6 @@ export class PortalGame extends Scene {
         const my_wall3 = new Wall(vec3(-1.5, -2, -6), vec3(-1, 0, 0), 3, 3, box_material, true);
         const my_wall4 = new Wall(vec3(1.5, -2, -6), vec3(1, 0, 0), 3, 3, box_material, true);
         const test_walls = [my_wall, my_wall2, my_wall3, my_wall4];
-
         game_walls = game_walls.concat(test_walls);
 
         // First room
@@ -495,31 +512,55 @@ export class PortalGame extends Scene {
         game_walls = game_walls.concat(rm1);
 
         // First room backwalls
-        const rm1_front1_b = new Wall(vec3(-15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm1_front2_b = new Wall(vec3(15, 0, -(25 + eps)), vec3(0, 0, -1), 20 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm1_back_b = new Wall(vec3(0, 0, 25 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm1_left_b = new Wall(vec3(25 + eps, 0, 0), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm1_right_b = new Wall(vec3(-(25 + eps), 0, 0), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
+        const rm1_front1_b = new Wall(vec3(-15, 0, -25), vec3(0, 0, -1), 20, 10, this.materials.wall_texture2);
+        const rm1_front2_b = new Wall(vec3(15, 0, -25), vec3(0, 0, -1), 20, 10, this.materials.wall_texture2);
+        const rm1_back_b = new Wall(vec3(0, 0, 25), vec3(0, 0, 1), 50, 10, this.materials.wall_texture2);
+        const rm1_left_b = new Wall(vec3(25, 0, 0), vec3(1, 0, 0), 50, 10, this.materials.wall_texture2);
+        const rm1_right_b = new Wall(vec3(-25, 0, 0), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture2);
         const rm1_b = [rm1_front1_b, rm1_front2_b, rm1_back_b, rm1_left_b, rm1_right_b];
         game_walls = game_walls.concat(rm1_b);
 
         // Second room
         const rm2_front1 = new Wall(vec3(-30, 0, -50), vec3(0, 0, -1), 50, 10, this.materials.wall_texture1);
         const rm2_front2 = new Wall(vec3(15, 0, -50), vec3(0, 0, -1), 20, 10, this.materials.wall_texture1);
-        //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
         const rm2_left = new Wall(vec3(-25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall_texture1);
         const rm2_right = new Wall(vec3(25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture1);
-        const rm2 = [rm2_front1, rm2_front2, rm2_left, rm2_right];
+        const left_diag = new Wall(vec3(15, 0, -110), vec3(-Math.sqrt(2), 0, Math.sqrt(2)), Math.sqrt(800), 10, this.materials.wall_texture1);
+        const right_diag = new Wall(vec3(35, 0, -110), vec3(Math.sqrt(2), 0, Math.sqrt(2)), Math.sqrt(800), 10, this.materials.wall_texture1);
+        const rm2 = [rm2_front1, rm2_front2, rm2_left, rm2_right, left_diag, right_diag];
         game_walls = game_walls.concat(rm2);
 
         // Second room backwalls
-        const rm2_front1_b = new Wall(vec3(-30, 0, -50 + eps), vec3(0, 0, 1), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm2_front2_b = new Wall(vec3(15, 0, -50 + eps), vec3(0, 0, 1), 20 + 2 * eps, 10, this.materials.wall_texture2);
-        //const rm2_back = new Wall(vec3(0, 0, 25), vec3(0, 0, -1), 50, 10, this.materials.wall);
-        const rm2_left_b = new Wall(vec3(-(25 + eps), 0, -75), vec3(-1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm2_right_b = new Wall(vec3(25 + eps, 0, -75), vec3(1, 0, 0), 50 + 2 * eps, 10, this.materials.wall_texture2);
-        const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b];
+        const rm2_front1_b = new Wall(vec3(-30, 0, -50), vec3(0, 0, 1), 50, 10, this.materials.wall_texture2);
+        const rm2_front2_b = new Wall(vec3(15, 0, -50), vec3(0, 0, 1), 20, 10, this.materials.wall_texture2);
+        const rm2_left_b = new Wall(vec3(-25, 0, -75), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture2);
+        const rm2_right_b = new Wall(vec3(25, 0, -75), vec3(1, 0, 0), 50, 10, this.materials.wall_texture2);
+        const left_diag_b = new Wall(vec3(15, 0, -110), vec3(Math.sqrt(2), 0, -Math.sqrt(2)), Math.sqrt(800), 10, this.materials.wall_texture2);
+        const right_diag_b = new Wall(vec3(35, 0, -110), vec3(-Math.sqrt(2), 0, -Math.sqrt(2)), Math.sqrt(800), 10, this.materials.wall_texture2);
+        const rm2_b = [rm2_front1_b, rm2_front2_b, rm2_left_b, rm2_right_b, left_diag_b, right_diag_b];
         game_walls = game_walls.concat(rm2_b);
+
+        // Top lef atrium (+ backwalls)
+        const tla_left = new Wall(vec3(-55, 0, -85), vec3(1, 0, 0), 70, 10, this.materials.wall_texture1);
+        const tla_left_b = new Wall(vec3(-55, 0, -85), vec3(-1, 0, 0), 70, 10, this.materials.wall_texture2);
+        const tla = [tla_left, tla_left_b];
+        game_walls = game_walls.concat(tla);
+
+        // Third room
+        const rm3_front1 = new Wall(vec3(-15, 0, 75), vec3(0, 0, -1), 20, 10, this.materials.wall_texture1);
+        const rm3_front2 = new Wall(vec3(15, 0, 75), vec3(0, 0, -1), 20, 10, this.materials.wall_texture1);
+        const rm3_left = new Wall(vec3(-25, 0, 50), vec3(1, 0, 0), 50, 10, this.materials.wall_texture1);
+        const rm3_right = new Wall(vec3(25, 0, 50), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture1);
+        const rm3 = [rm3_front1, rm3_front2, rm3_left, rm3_right];
+        game_walls = game_walls.concat(rm3);
+
+        // Third room backwalls
+        const rm3_front1_b = new Wall(vec3(-15, 0, 75), vec3(0, 0, 1), 20, 10, this.materials.wall_texture2);
+        const rm3_front2_b = new Wall(vec3(15, 0, 75), vec3(0, 0, 1), 20, 10, this.materials.wall_texture2);
+        const rm3_left_b = new Wall(vec3(-25, 0, 50), vec3(-1, 0, 0), 50, 10, this.materials.wall_texture2);
+        const rm3_right_b = new Wall(vec3(25, 0, 50), vec3(1, 0, 0), 50, 10, this.materials.wall_texture2);
+        const rm3_b = [rm3_front1_b, rm3_front2_b, rm3_left_b, rm3_right_b];
+        game_walls = game_walls.concat(rm3_b);
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
