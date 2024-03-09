@@ -68,7 +68,10 @@ export class PortalGame extends Scene {
             sphere3: new defs.Subdivision_Sphere(3),
             sphere4: new defs.Subdivision_Sphere(4),
             square: new defs.Square(),
+            sky: new defs.Square(),
         };
+
+        this.shapes.sky.arrays.texture_coord = this.shapes.sky.arrays.texture_coord.map(x => x.times(10));
 
         // *** Materials
         this.materials = {
@@ -92,6 +95,10 @@ export class PortalGame extends Scene {
                 color: hex_color("#ffffff"),
                 ambient: 0.5, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/floor-texture.jpg")
+            }),
+            sky_texture: new Material(new Textured_Phong(), {
+                ambient: 1.0,
+                texture: new Texture("assets/sky-texture.jpg")
             }),
             orange_portal_on: new Material(new Textured_Phong(), {
                 ambient: 1.0,
@@ -460,10 +467,14 @@ export class PortalGame extends Scene {
     draw_environment(context, program_state, environment_transform) {
         // Draw floor at origin translated down by y = -0.5 units
         var floor_transform = Mat4.identity();
+        var sky_transform = Mat4.identity();
         var horizontal_angle = Math.PI / 2;
 
         floor_transform = floor_transform.times(Mat4.scale(100, 8, 120).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
+        sky_transform = sky_transform.times(Mat4.scale(900, 8, 900).times(Mat4.translation(0, 3, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
+
         this.shapes.square.draw(context, program_state, floor_transform, this.materials.floor_texture);
+        this.shapes.sky.draw(context, program_state, sky_transform, this.materials.sky_texture);
 
     }
 
@@ -600,7 +611,7 @@ export class PortalGame extends Scene {
         const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
         program_state.set_camera(Mat4.inverse(player_transform));
 
-        // Draw floor
+        // Draw floor, sky
         this.draw_environment(context, program_state);
 
         // Draw walls
