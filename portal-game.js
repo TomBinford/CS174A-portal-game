@@ -229,20 +229,10 @@ export class PortalGame extends Scene {
                 || point_of_contact_vertical >= in_portal.height / 2 - player_height;
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
-                let in_vec = vec3(Math.sin(this.player.orientation_clockwise), 0, -Math.cos(this.player.orientation_clockwise));
-                let in_opp_normal = in_portal.normal.times(-1);
-                let flip = in_opp_normal.dot(in_vec) < 0;
-                let crossed = in_opp_normal.cross(in_vec);
-                let dir = Math.sign(crossed[1]);
-                let player_in_angle = Math.asin(crossed.norm());
-                player_in_angle *= dir;
-                let out_portal_angle = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
-
-                if(flip) {
-                    this.player.orientation_clockwise = (Math.PI + out_portal_angle) + player_in_angle;
-                } else {
-                    this.player.orientation_clockwise = out_portal_angle - player_in_angle;
-                }
+                const angle_into_in_portal = Math.PI + Math.atan2(in_portal.normal[0], -in_portal.normal[2]);
+                const angle_out_of_out_portal = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
+                const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
+                this.player.orientation_clockwise += angle_diff;
 
                 // Player has gone into the portal; spawn them out on the other side.
                 return vec4(out_portal.center[0], 0, out_portal.center[2], 0).plus(out_portal.normal);
