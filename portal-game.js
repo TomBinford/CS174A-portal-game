@@ -581,7 +581,7 @@ export class PortalGame extends Scene {
             if (this.portal1 && this.portal2) {
                 const inside_portal = (p) => {
                     const t = this.t_from_plane_to_point(p.normal, p.center, this.player.position);
-                    if (t < player_radius && t > -player_radius) {
+                    if (t < player_radius && t > -player_radius + this.player_speed * program_state.animation_delta_time) {
                         // Subtract from width so the player can only walk inside if their whole body is inside the portal.
                         return this.is_planar_point_inside_rectangle(p.normal, p.center, p.width - 2 * player_radius, p.height, this.player.position);
                     }
