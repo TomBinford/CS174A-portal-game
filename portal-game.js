@@ -239,9 +239,9 @@ export class PortalGame extends Scene {
                 let out_portal_angle = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
 
                 if(flip) {
-                    this.player.orientation_clockwise = (Math.PI + out_portal_angle) - player_in_angle;
+                    this.player.orientation_clockwise = (Math.PI + out_portal_angle) + player_in_angle;
                 } else {
-                    this.player.orientation_clockwise = out_portal_angle + player_in_angle;
+                    this.player.orientation_clockwise = out_portal_angle - player_in_angle;
                 }
 
                 // Player has gone into the portal; spawn them out on the other side.
