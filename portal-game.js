@@ -17,10 +17,10 @@ function xyz(vec) {
 class Wall {
     // center and normal are vec4's.
     constructor(center, normal, width, height, material, always_draw = false) {
-        this.center = center;
+        this.center = center.length === 4 ? center : vec4(...center, 1);
+        this.normal = (normal.length === 4 ? normal : vec4(...normal, 0)).normalized();
         this.width = width;
         this.height = height;
-        this.normal = normal.normalized();
         this.material = material;
         this.always_draw = always_draw;
     }
@@ -126,8 +126,8 @@ export class PortalGame extends Scene {
         this.asish_mode = false;
 
         // Portal variables
-        this.portal1 = new Portal(vec3(-15, 1, 24.9), vec3(0, 0, -1), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
-        this.portal2 = new Portal(vec3(-24.9, 1, 0), vec3(1, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
+        this.portal1 = new Portal(vec4(-15, 1, 24.9, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
+        this.portal2 = new Portal(vec4(-24.9, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
         this.max_portaling_distance = 150.0;
         this.requested_portal1_shoot = false;
         this.requested_portal2_shoot = false;
@@ -208,7 +208,7 @@ export class PortalGame extends Scene {
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
                 // Player has gone into the wall; need to push them back out.
-                return wall.normal.times(-(t - player_radius));
+                //return wall.normal.times(-(t - player_radius));
             }
             // Otherwise the player is going around the wall.
         }
@@ -220,7 +220,8 @@ export class PortalGame extends Scene {
             return this.player.position;
         }
         const t = this.t_from_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
-        if (t < player_radius && t > -this.player_speed) {
+        // Multiply by 30 because player_speed is units per ms.
+        if (t < 0 && t >= -this.player_speed * 30) {
             const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
             const point_of_contact = this.nearest_point_on_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
             const point_of_contact_vertical = point_of_contact[1] - in_portal.center[1];
@@ -229,15 +230,16 @@ export class PortalGame extends Scene {
                 || point_of_contact_vertical >= in_portal.height / 2 - player_height;
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
+                // Player has gone into the portal; spawn them out on the other side.
                 const angle_into_in_portal = Math.PI + Math.atan2(in_portal.normal[0], -in_portal.normal[2]);
                 const angle_out_of_out_portal = Math.atan2(out_portal.normal[0], -out_portal.normal[2]);
                 const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
                 this.player.orientation_clockwise += angle_diff;
 
-                // Player has gone into the portal; spawn them out on the other side.
-                return vec4(out_portal.center[0], 0, out_portal.center[2], 0).plus(out_portal.normal);
+                const player_relative_to_in = this.player.position.minus(in_portal.center);
+                const player_relative_to_out = Mat4.rotation(angle_diff, 0, -1, 0).times(player_relative_to_in);
+                return vec4(out_portal.center[0] + player_relative_to_out[0], 0, out_portal.center[2] + player_relative_to_out[2], 0);//.plus(out_portal.normal);
             }
-            // Otherwise the player is going around the wall.
         }
         return this.player.position;
     }
