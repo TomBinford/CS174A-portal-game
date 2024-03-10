@@ -126,11 +126,12 @@ export class PortalGame extends Scene {
         this.asish_mode = false;
 
         // Portal variables
-        this.portal1 = new Portal(vec4(-15, 1, 24.9, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
-        this.portal2 = new Portal(vec4(-24.9, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
+        this.portal_offset_from_wall = 0.01;
         this.max_portaling_distance = 150.0;
         this.requested_portal1_shoot = false;
         this.requested_portal2_shoot = false;
+        this.portal1 = new Portal(vec4(-15, 1, 25 - this.portal_offset_from_wall, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
+        this.portal2 = new Portal(vec4(-25 + this.portal_offset_from_wall, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
 
         this.player_speed = 0.015;
         this.player = {
@@ -155,14 +156,18 @@ export class PortalGame extends Scene {
         }
     }
 
-    // Precondition: point_on_plane_of_wall is on the plane described by wall.normal and wall.center
+    // Precondition: point_on_plane_of_wall is on the plane described by plane_normal and plane_center
+    is_planar_point_inside_rectangle(rectangle_normal, rectangle_center, width, height, test_point) {
+        const p = test_point;
+        const point_of_contact_vertical = p[1] - rectangle_center[1];
+        const point_of_contact_horizontal = vec3(p[0], 0, p[2]).minus(vec3(rectangle_center[0], 0, rectangle_center[2])).norm();
+        const ok_vertical = Math.abs(point_of_contact_vertical) <= height / 2;
+        const ok_horizontal = Math.abs(point_of_contact_horizontal) <= width / 2;
+        return ok_vertical && ok_horizontal;
+    }
+
     is_planar_point_on_wall(wall, point_on_plane_of_wall) {
-        const p = point_on_plane_of_wall;
-        const point_of_contact_vertical = p[1] - wall.center[1];
-        const point_of_contact_horizontal = vec3(p[0], 0, p[2]).minus(vec3(wall.center[0], 0, wall.center[2])).norm();
-        const on_wall_vertical = Math.abs(point_of_contact_vertical) <= wall.height / 2;
-        const on_wall_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2;
-        return on_wall_vertical && on_wall_horizontal;
+        return this.is_planar_point_inside_rectangle(wall.normal, wall.center, wall.width, wall.height, point_on_plane_of_wall);
     }
 
     // All parameters are vec4's. Returns null if there is no intersection, otherwise the value t
@@ -198,7 +203,7 @@ export class PortalGame extends Scene {
 
     solve_player_collision(wall, player_radius, player_height) {
         const t = this.t_from_plane_to_point(wall.normal, wall.center, this.player.position);
-        if (t < player_radius && t > -this.player_speed) {
+        if (t < player_radius && t > 0) {
             const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
             const point_of_contact = this.nearest_point_on_plane_to_point(wall.normal, wall.center, this.player.position);
             const point_of_contact_vertical = point_of_contact[1] - wall.center[1];
@@ -208,7 +213,7 @@ export class PortalGame extends Scene {
             const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= wall.width / 2 + radius_component_not_inside_wall;
             if (wall_contact_vertical && wall_contact_horizontal) {
                 // Player has gone into the wall; need to push them back out.
-                //return wall.normal.times(-(t - player_radius));
+                return wall.normal.times(-(t - player_radius));
             }
             // Otherwise the player is going around the wall.
         }
@@ -220,6 +225,7 @@ export class PortalGame extends Scene {
             return this.player.position;
         }
         const t = this.t_from_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
+        // Teleport only if the player's center has entered the portal.
         // Multiply by 30 because player_speed is units per ms.
         if (t < 0 && t >= -this.player_speed * 30) {
             const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
@@ -311,7 +317,8 @@ export class PortalGame extends Scene {
 
         // At this point, the portal is guaranteed to be on the wall.
         // TODO return null if the new portal would overlap with the existing *other* portal.
-        return new Portal(look_at_point.plus(wall.normal.times(0.01)), wall.normal, width,  height, material_off, material_on);
+        const portal_center = look_at_point.plus(wall.normal.times(this.portal_offset_from_wall));
+        return new Portal(portal_center, wall.normal, width,  height, material_off, material_on);
     }
 
     make_control_panel() {
@@ -467,7 +474,6 @@ export class PortalGame extends Scene {
 
         this.shapes.square.draw(context, program_state, floor_transform, this.materials.floor_texture);
         this.shapes.sky.draw(context, program_state, sky_transform, this.materials.sky_texture);
-
     }
 
     display(context, program_state) {
@@ -568,14 +574,32 @@ export class PortalGame extends Scene {
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
             this.move_player_from_wasd(program_state.animation_delta_time);
-            // Do physics
-            for (const wall of game_walls) {
-                const resolution_force = this.solve_player_collision(wall, 1.0, 2.0);
-                this.player.position = this.player.position.plus(resolution_force);
+
+            const player_radius = 1.0;
+            // Do physics unless the player is inside an open portal, in which case they can move freely.
+            let do_wall_physics = true;
+            if (this.portal1 && this.portal2) {
+                const inside_portal = (p) => {
+                    const t = this.t_from_plane_to_point(p.normal, p.center, this.player.position);
+                    if (t < player_radius && t > -player_radius) {
+                        // Subtract from width so the player can only walk inside if their whole body is inside the portal.
+                        return this.is_planar_point_inside_rectangle(p.normal, p.center, p.width - 2 * player_radius, p.height, this.player.position);
+                    }
+                    return false;
+                };
+                if (inside_portal(this.portal1) || inside_portal(this.portal2)) {
+                    do_wall_physics = false;
+                }
+            }
+            if (do_wall_physics) {
+                for (const wall of game_walls) {
+                    const resolution_force = this.solve_player_collision(wall, player_radius, 2.0);
+                    this.player.position = this.player.position.plus(resolution_force);
+                }
             }
 
-            this.player.position = this.solve_player_collision_portal(this.portal1, this.portal2, 1.0, 2.0);
-            this.player.position = this.solve_player_collision_portal(this.portal2, this.portal1, 1.0, 2.0);
+            this.player.position = this.solve_player_collision_portal(this.portal1, this.portal2, player_radius, 2.0);
+            this.player.position = this.solve_player_collision_portal(this.portal2, this.portal1, player_radius, 2.0);
 
             if (this.requested_portal1_shoot) {
                 this.requested_portal1_shoot = false;
