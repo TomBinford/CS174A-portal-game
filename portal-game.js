@@ -298,8 +298,7 @@ export class PortalGame extends Scene {
         // Snap vertically
         if (vertical_dist > wall.height / 2 - height / 2) {
             look_at_point[1] = (wall.center[1] + wall.height / 2) - height / 2;
-        }
-        else if (vertical_dist < -wall.height / 2 + height / 2) {
+        } else if (vertical_dist < -wall.height / 2 + height / 2) {
             look_at_point[1] = (wall.center[1] - wall.height / 2) + height / 2;
         }
 
@@ -310,8 +309,7 @@ export class PortalGame extends Scene {
             const left_point = wall.center.plus(xyz(wall.normal).cross(vec3(0, wall.width / 2 - width / 2, 0)));
             look_at_point[0] = left_point[0];
             look_at_point[2] = left_point[2];
-        }
-        else if (horizontal_dist > wall.width / 2 - width / 2) {
+        } else if (horizontal_dist > wall.width / 2 - width / 2) {
             const right_point = wall.center.plus(xyz(wall.normal).cross(vec3(0, -wall.width / 2 + width / 2, 0)));
             look_at_point[0] = right_point[0];
             look_at_point[2] = right_point[2];
@@ -320,7 +318,7 @@ export class PortalGame extends Scene {
         // At this point, the portal is guaranteed to be on the wall.
         // TODO return null if the new portal would overlap with the existing *other* portal.
         const portal_center = look_at_point.plus(wall.normal.times(this.portal_offset_from_wall));
-        return new Portal(portal_center, wall.normal, width,  height, material_off, material_on);
+        return new Portal(portal_center, wall.normal, width, height, material_off, material_on);
     }
 
     make_control_panel() {
@@ -642,8 +640,7 @@ export class PortalGame extends Scene {
             const distance_to_portal = this.portal1.center.minus(this.player.position).norm();
             program_state.projection_transform = Mat4.perspective(
                 Math.PI / 4, context.width / context.height, .1 + distance_to_portal, 1000);
-        }
-        else {
+        } else {
             // TODO we won't need this line once portal rendering is on a temporary program_state
             program_state.projection_transform = Mat4.perspective(
                 Math.PI / 4, context.width / context.height, .1, 1000);
