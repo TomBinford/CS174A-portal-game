@@ -118,6 +118,8 @@ export class PortalGame extends Scene {
             }),
         }
 
+        this.render_portal_view = false;
+
         this.w_pressed = false;
         this.a_pressed = false;
         this.s_pressed = false;
@@ -323,6 +325,9 @@ export class PortalGame extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+        this.key_triggered_button("switch normal <-> portal view mode", [" "], () => {
+            this.render_portal_view = !this.render_portal_view;
+        });
         this.key_triggered_button("move forward", ["w"],
             () => {
                 this.w_pressed = true;
@@ -623,9 +628,29 @@ export class PortalGame extends Scene {
         program_state.lights = [new Light(light_position, curr_color, 1)];
 
         // Set the camera for this frame
-        const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
-        const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
-        program_state.set_camera(Mat4.inverse(player_transform));
+        if (this.render_portal_view && this.portal1 && this.portal2) {
+            const angle_into_in_portal = Math.PI + Math.atan2(this.portal1.normal[0], -this.portal1.normal[2]);
+            const angle_out_of_out_portal = Math.atan2(this.portal2.normal[0], -this.portal2.normal[2]);
+            const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
+            const camera_orientation_clockwise = this.player.orientation_clockwise - angle_diff;
+            const pos_diff = this.player.position.minus(this.portal1.center);
+            const camera_position = this.portal2.center.plus(Mat4.rotation(angle_diff, 0, -1, 0).times(pos_diff));
+            const camera_look_transform = Mat4.rotation(camera_orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
+            const camera_transform = Mat4.translation(...camera_position).times(camera_look_transform);
+            program_state.set_camera(Mat4.inverse(camera_transform));
+
+            const distance_to_portal = this.portal1.center.minus(this.player.position).norm();
+            program_state.projection_transform = Mat4.perspective(
+                Math.PI / 4, context.width / context.height, .1 + distance_to_portal, 1000);
+        }
+        else {
+            // TODO we won't need this line once portal rendering is on a temporary program_state
+            program_state.projection_transform = Mat4.perspective(
+                Math.PI / 4, context.width / context.height, .1, 1000);
+            const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
+            const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
+            program_state.set_camera(Mat4.inverse(player_transform));
+        }
 
         // Draw floor, sky
         this.draw_environment(context, program_state);
