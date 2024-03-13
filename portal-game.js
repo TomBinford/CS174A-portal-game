@@ -633,7 +633,7 @@ export class PortalGame extends Scene {
             const angle_into_in_portal = Math.PI + Math.atan2(this.portal1.normal[0], -this.portal1.normal[2]);
             const angle_out_of_out_portal = Math.atan2(this.portal2.normal[0], -this.portal2.normal[2]);
             const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
-            const camera_orientation_clockwise = this.player.orientation_clockwise - angle_diff;
+            const camera_orientation_clockwise = this.player.orientation_clockwise + angle_diff;
             const pos_diff = this.player.position.minus(this.portal1.center);
             const camera_position = this.portal2.center.plus(Mat4.rotation(angle_diff, 0, -1, 0).times(pos_diff));
             const camera_look_transform = Mat4.rotation(camera_orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
