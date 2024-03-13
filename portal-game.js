@@ -683,6 +683,8 @@ export class PortalGame extends Scene {
 
             // Draw the entrance portal but not the exit (as we are already from the POV of it).
             if (this.portal1) {
+                // TODO fix this to draw less dynamically. It currently has issues when the exit
+                // portal can see into the entrance portal.
                 this.portal1.draw(context, program_state, this.shapes.square, this.portal2);
             }
 
@@ -700,7 +702,7 @@ export class PortalGame extends Scene {
             }
 
             // Render from the camera's POV into a texture.
-            this.scratchpad_context.drawImage(context.canvas, 0, 0, 1080, 600);
+            this.scratchpad_context.drawImage(context.canvas, 0, 0, 1024, 1024);
             this.texture_through_blue_portal.image.src = this.scratchpad.toDataURL("image/png");
             this.texture_through_blue_portal.copy_onto_graphics_card(context.context, false);
 
