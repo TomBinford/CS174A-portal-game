@@ -37,6 +37,9 @@ class Portal extends Wall {
     constructor(center, normal, width, height, material_off, material_on) {
         super(center, normal, width, height, material_off);
         this.material_on = material_on;
+        // initial value doesn't matter since you could only be spuriously
+        // teleported if you were touching the portal at game start.
+        this.is_player_in_front = true;
     }
 
     draw(context, program_state, square, isOn) {
@@ -228,15 +231,15 @@ export class PortalGame extends Scene {
         }
         const t = this.t_from_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
         // Teleport only if the player's center has entered the portal.
-        // Multiply by 30 because player_speed is units per ms.
-        if (t < 0 && t >= -this.player_speed * 30) {
-            const radius_component_not_inside_wall = Math.sqrt(player_radius ** 2 - t ** 2);
+        const was_player_in_front = in_portal.is_player_in_front;
+        in_portal.is_player_in_front = t > 0;
+        if (was_player_in_front && !in_portal.is_player_in_front) {
             const point_of_contact = this.nearest_point_on_plane_to_point(in_portal.normal, in_portal.center, this.player.position);
             const point_of_contact_vertical = point_of_contact[1] - in_portal.center[1];
             const point_of_contact_horizontal = vec3(point_of_contact[0], 0, point_of_contact[2]).minus(vec3(in_portal.center[0], 0, in_portal.center[2])).norm();
             const wall_contact_vertical = point_of_contact_vertical <= in_portal.height / 2
                 || point_of_contact_vertical >= in_portal.height / 2 - player_height;
-            const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2 + radius_component_not_inside_wall;
+            const wall_contact_horizontal = Math.abs(point_of_contact_horizontal) <= in_portal.width / 2;
             if (wall_contact_vertical && wall_contact_horizontal) {
                 // Player has gone into the portal; spawn them out on the other side.
                 const angle_into_in_portal = Math.PI + Math.atan2(in_portal.normal[0], -in_portal.normal[2]);
