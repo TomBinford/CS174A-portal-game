@@ -27,7 +27,7 @@ class Wall {
 
     draw(context, program_state, square) {
         const scale_mat = Mat4.scale(this.width / 2, this.height / 2, 1);
-        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
+        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.minus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
         square.draw(context, program_state, model_transform, this.material);
     }
 }
@@ -41,7 +41,7 @@ class Portal extends Wall {
 
     draw(context, program_state, square, isOn) {
         const scale_mat = Mat4.scale(this.width / 2, this.height / 2, 1);
-        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.plus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
+        const model_transform = Mat4.inverse(Mat4.look_at(xyz(this.center), xyz(this.center.minus(this.normal)), vec3(0, 1, 0))).times(scale_mat);
 
         if (isOn) {
             square.draw(context, program_state, model_transform, this.material_on);
