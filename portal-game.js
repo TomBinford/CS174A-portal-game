@@ -591,32 +591,43 @@ export class PortalGame extends Scene {
 
         if (program_state.animate) {
             // PUT ALL UPDATE LOGIC HERE
-            this.move_player_from_wasd(program_state.animation_delta_time);
 
-            const player_radius = 1.0;
-            // Do physics unless the player is inside an open portal, in which case they can move freely.
-            let do_wall_physics = true;
-            if (this.portal1 && this.portal2) {
-                const inside_portal = (p) => {
-                    const t = this.t_from_plane_to_point(p.normal, p.center, this.player.position);
-                    if (t < player_radius && t > -player_radius + this.player_speed * program_state.animation_delta_time) {
-                        // Subtract from width so the player can only walk inside if their whole body is inside the portal.
-                        return this.is_planar_point_inside_rectangle(p.normal, p.center, p.width - 2 * player_radius, p.height, this.player.position);
+            const simulate_physics = (time_delta_ms) => {
+                this.move_player_from_wasd(time_delta_ms);
+
+                const player_radius = 1.0;
+                // Do physics unless the player is inside an open portal, in which case they can move freely.
+                let do_wall_physics = true;
+                if (this.portal1 && this.portal2) {
+                    const inside_portal = (p) => {
+                        const t = this.t_from_plane_to_point(p.normal, p.center, this.player.position);
+                        if (t < player_radius && t > -player_radius + this.player_speed * time_delta_ms) {
+                            // Subtract from width so the player can only walk inside if their whole body is inside the portal.
+                            return this.is_planar_point_inside_rectangle(p.normal, p.center, p.width - 2 * player_radius, p.height, this.player.position);
+                        }
+                        return false;
+                    };
+                    if (inside_portal(this.portal1) || inside_portal(this.portal2)) {
+                        do_wall_physics = false;
                     }
-                    return false;
-                };
-                if (inside_portal(this.portal1) || inside_portal(this.portal2)) {
-                    do_wall_physics = false;
                 }
-            }
-            if (do_wall_physics) {
-                for (const wall of game_walls) {
-                    const resolution_force = this.solve_player_collision(wall, player_radius, 2.0);
-                    this.player.position = this.player.position.plus(resolution_force);
+                if (do_wall_physics) {
+                    for (const wall of game_walls) {
+                        const resolution_force = this.solve_player_collision(wall, player_radius, 2.0);
+                        this.player.position = this.player.position.plus(resolution_force);
+                    }
                 }
+                this.player.position = this.solve_player_collision_portal(this.portal1, this.portal2, player_radius, 2.0);
+                this.player.position = this.solve_player_collision_portal(this.portal2, this.portal1, player_radius, 2.0);
+            };
+
+            // To avoid instability caused by low frame rates, solve physics on smaller time steps.
+            let t = program_state.animation_delta_time;
+            while (t > 0.0) {
+                const time_step = Math.min(t, 10.0); // 10ms is small enough to be unproblematic
+                t -= time_step;
+                simulate_physics(time_step);
             }
-            this.player.position = this.solve_player_collision_portal(this.portal1, this.portal2, player_radius, 2.0);
-            this.player.position = this.solve_player_collision_portal(this.portal2, this.portal1, player_radius, 2.0);
 
             if (this.requested_portal1_shoot) {
                 this.requested_portal1_shoot = false;
