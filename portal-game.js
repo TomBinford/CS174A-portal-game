@@ -650,7 +650,7 @@ export class PortalGame extends Scene {
         var curr_color = color(1, 1, 1, 1);
         program_state.lights = [new Light(light_position, curr_color, 1)];
 
-        const render_fake_camera_to_texture = (portal_entrance, portal_exit, output_texture) => {
+        const render_portal_camera_to_texture = (portal_entrance, portal_exit, output_texture) => {
             if (!(this.render_portal_view && portal_entrance && portal_exit)) {
                 return;
             }
@@ -718,8 +718,14 @@ export class PortalGame extends Scene {
                 this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({color: hex_color("#ff4040")}));
             }
 
-            // Render from the camera's POV into a texture.
-            this.scratchpad_context.drawImage(context.canvas, 0, 0, 1024, 1024);
+            const visible_left = 0;
+            const visible_right = 1.0;
+            const visible_top = 0.0;
+            const visible_bottom = 1.0;
+            // Render from the camera's POV into the texture.
+            this.scratchpad_context.drawImage(context.canvas,
+                                                1080 * visible_left, 600 * visible_top, 1080 * (visible_right - visible_left), 600 * (visible_bottom - visible_top),
+                                                this.scratchpad.width * visible_left, this.scratchpad.height * visible_top, this.scratchpad.width * (visible_right - visible_left), this.scratchpad.height * (visible_bottom - visible_top));
             output_texture.image.src = this.scratchpad.toDataURL("image/png");
             output_texture.copy_onto_graphics_card(context.context, false);
 
@@ -727,8 +733,8 @@ export class PortalGame extends Scene {
             context.context.clear(context.context.COLOR_BUFFER_BIT | context.context.DEPTH_BUFFER_BIT);
         };
 
-        render_fake_camera_to_texture(this.portal1, this.portal2, this.texture_through_blue_portal);
-        render_fake_camera_to_texture(this.portal2, this.portal1, this.texture_through_orange_portal);
+        render_portal_camera_to_texture(this.portal1, this.portal2, this.texture_through_blue_portal);
+        render_portal_camera_to_texture(this.portal2, this.portal1, this.texture_through_orange_portal);
 
         // Set the real camera for the player POV
         program_state.projection_transform = Mat4.perspective(
