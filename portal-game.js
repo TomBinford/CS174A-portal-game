@@ -129,14 +129,16 @@ export class PortalGame extends Scene {
         // A hidden canvas for re-sizing the real canvas to be square:
         this.scratchpad_context = this.scratchpad.getContext('2d');
         this.texture_through_blue_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-        /*this.materials.orange_portal_textured = new Material(new Textured_Phong(), {
-            ambient: 1.0,
-            texture: this.texture_through_blue_portal,
-        });*/
+        this.texture_through_orange_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
         this.materials.orange_portal_textured = new Material(new Screen_Rendered_Texture(), {
             ambient: 1.0,
             texture: this.materials.orange_portal_on.texture,
             screenTexture: this.texture_through_blue_portal,
+        });
+        this.materials.blue_portal_textured = new Material(new Screen_Rendered_Texture(), {
+            ambient: 1.0,
+            texture: this.materials.blue_portal_on.texture,
+            screenTexture: this.texture_through_orange_portal,
         });
 
         this.w_pressed = false;
@@ -151,9 +153,8 @@ export class PortalGame extends Scene {
         this.max_portaling_distance = 150.0;
         this.requested_portal1_shoot = false;
         this.requested_portal2_shoot = false;
-        //this.portal1 = new Portal(vec4(-15, 1, 25 - this.portal_offset_from_wall, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_on);
         this.portal1 = new Portal(vec4(-15, 1, 25 - this.portal_offset_from_wall, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_textured);
-        this.portal2 = new Portal(vec4(-25 + this.portal_offset_from_wall, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_on);
+        this.portal2 = new Portal(vec4(-25 + this.portal_offset_from_wall, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_textured);
 
         this.player_speed = 0.015;
         this.player = {
@@ -619,7 +620,6 @@ export class PortalGame extends Scene {
 
             if (this.requested_portal1_shoot) {
                 this.requested_portal1_shoot = false;
-                //const new_portal = this.try_create_portal(game_walls, this.materials.orange_portal_off, this.materials.orange_portal_on);
                 const new_portal = this.try_create_portal(game_walls, this.materials.orange_portal_off, this.materials.orange_portal_textured);
                 if (new_portal !== null) {
                     this.portal1 = new_portal;
@@ -627,7 +627,7 @@ export class PortalGame extends Scene {
             }
             if (this.requested_portal2_shoot) {
                 this.requested_portal2_shoot = false;
-                const new_portal = this.try_create_portal(game_walls, this.materials.blue_portal_off, this.materials.blue_portal_on);
+                const new_portal = this.try_create_portal(game_walls, this.materials.blue_portal_off, this.materials.blue_portal_textured);
                 if (new_portal !== null) {
                     this.portal2 = new_portal;
                 }
@@ -639,19 +639,22 @@ export class PortalGame extends Scene {
         var curr_color = color(1, 1, 1, 1);
         program_state.lights = [new Light(light_position, curr_color, 1)];
 
-        // Set the fake camera for looking through the orange portal
-        if (this.render_portal_view && this.portal1 && this.portal2) {
-            const angle_into_in_portal = Math.PI + Math.atan2(this.portal1.normal[0], -this.portal1.normal[2]);
-            const angle_out_of_out_portal = Math.atan2(this.portal2.normal[0], -this.portal2.normal[2]);
+        const render_fake_camera_to_texture = (portal_entrance, portal_exit, output_texture) => {
+            if (!(this.render_portal_view && portal_entrance && portal_exit)) {
+                return;
+            }
+            // Set the fake camera for looking through the orange portal
+            const angle_into_in_portal = Math.PI + Math.atan2(portal_entrance.normal[0], -portal_entrance.normal[2]);
+            const angle_out_of_out_portal = Math.atan2(portal_exit.normal[0], -portal_exit.normal[2]);
             const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
             const camera_orientation_clockwise = this.player.orientation_clockwise + angle_diff;
-            const pos_diff = this.player.position.minus(this.portal1.center);
-            const camera_position = this.portal2.center.plus(Mat4.rotation(angle_diff, 0, -1, 0).times(pos_diff));
+            const pos_diff = this.player.position.minus(portal_entrance.center);
+            const camera_position = portal_exit.center.plus(Mat4.rotation(angle_diff, 0, -1, 0).times(pos_diff));
             const camera_look_transform = Mat4.rotation(camera_orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
             const camera_transform = Mat4.translation(...camera_position).times(camera_look_transform);
             program_state.set_camera(Mat4.inverse(camera_transform));
 
-            const distance_to_portal = this.portal1.center.minus(this.player.position).norm();
+            const distance_to_portal = portal_entrance.center.minus(this.player.position).norm();
 
             program_state.projection_transform = Mat4.perspective(
                 Math.PI / 4, context.width / context.height, .2 + distance_to_portal, 1000);
@@ -662,8 +665,8 @@ export class PortalGame extends Scene {
             // Draw walls
             for (const wall of game_walls) {
                 // Do not draw the back wall of the wall the exit portal is placed on.
-                if (wall.normal.dot(this.portal2.normal) < -0.999) {
-                    const corresponding_point_to_portal_on_wall = this.portal2.center.minus(this.portal2.normal.times(this.portal_offset_from_wall));
+                if (wall.normal.dot(portal_exit.normal) < -0.999) {
+                    const corresponding_point_to_portal_on_wall = portal_exit.center.minus(portal_exit.normal.times(this.portal_offset_from_wall));
                     if (this.is_planar_point_inside_rectangle(wall.normal, wall.center, wall.width, wall.height, corresponding_point_to_portal_on_wall)) {
                         continue;
                     }
@@ -683,14 +686,12 @@ export class PortalGame extends Scene {
             }
 
             // Draw the entrance portal but not the exit (as we are already from the POV of it).
-            if (this.portal1) {
-                const d = -this.portal1.center.dot(this.portal1.normal);
-                const dot = this.portal1.normal.dot(camera_position) + d;
-                if (dot >= 0) {
-                    // TODO fix this to draw less dynamically. It currently has issues when the exit
-                    // portal can see into the entrance portal.
-                    this.portal1.draw(context, program_state, this.shapes.square, this.portal2);
-                }
+            const d = -portal_entrance.center.dot(portal_entrance.normal);
+            const dot = portal_entrance.normal.dot(camera_position) + d;
+            if (dot >= 0) {
+                // TODO fix this to draw less dynamically. It currently has issues when the exit
+                // portal can see into the entrance portal.
+                portal_entrance.draw(context, program_state, this.shapes.square, portal_exit);
             }
 
             // Create Body (a sphere below the player transform)
@@ -708,12 +709,15 @@ export class PortalGame extends Scene {
 
             // Render from the camera's POV into a texture.
             this.scratchpad_context.drawImage(context.canvas, 0, 0, 1024, 1024);
-            this.texture_through_blue_portal.image.src = this.scratchpad.toDataURL("image/png");
-            this.texture_through_blue_portal.copy_onto_graphics_card(context.context, false);
+            output_texture.image.src = this.scratchpad.toDataURL("image/png");
+            output_texture.copy_onto_graphics_card(context.context, false);
 
             // Start over on a new drawing, never displaying the prior one:
             context.context.clear(context.context.COLOR_BUFFER_BIT | context.context.DEPTH_BUFFER_BIT);
-        }
+        };
+
+        render_fake_camera_to_texture(this.portal1, this.portal2, this.texture_through_blue_portal);
+        render_fake_camera_to_texture(this.portal2, this.portal1, this.texture_through_orange_portal);
 
         // Set the real camera for the player POV
         program_state.projection_transform = Mat4.perspective(
@@ -751,7 +755,7 @@ export class PortalGame extends Scene {
 
         // Create Body (A sphere below the player/camera transform)
         // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
-        var body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
+        const body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.body);
 
         // When the player is looking at a plane, draw a sphere there.
