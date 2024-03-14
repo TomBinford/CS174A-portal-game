@@ -127,7 +127,7 @@ export class PortalGame extends Scene {
         this.scratchpad.width = 1024; // TODO use context.width supplied to display()
         this.scratchpad.height = 1024; // TODO use context.height supplied to display()
         // A hidden canvas for re-sizing the real canvas to be square:
-        this.scratchpad_context = this.scratchpad.getContext('2d');
+        this.scratchpad_context = this.scratchpad.getContext("2d", { willReadFrequently: true });
         this.texture_through_blue_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
         this.texture_through_orange_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
         this.materials.orange_portal_textured = new Material(new Screen_Rendered_Texture(), {
@@ -718,15 +718,14 @@ export class PortalGame extends Scene {
                 this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({color: hex_color("#ff4040")}));
             }
 
-            const visible_left = 0;
-            const visible_right = 1.0;
-            const visible_top = 0.0;
-            const visible_bottom = 1.0;
-            // Render from the camera's POV into the texture.
-            this.scratchpad_context.drawImage(context.canvas,
-                                                1080 * visible_left, 600 * visible_top, 1080 * (visible_right - visible_left), 600 * (visible_bottom - visible_top),
-                                                this.scratchpad.width * visible_left, this.scratchpad.height * visible_top, this.scratchpad.width * (visible_right - visible_left), this.scratchpad.height * (visible_bottom - visible_top));
-            output_texture.image.src = this.scratchpad.toDataURL("image/png");
+            // Render from the camera's POV into the texture. This only renders the
+            // sub-rectangle that will ultimately be visible inside the portal.
+            this.scratchpad_context.drawImage(context.canvas, 0, 0, 1080, 600, 0, 0, this.scratchpad.width, this.scratchpad.height);
+            // HACK: TinyGraphics makes Texture.image is an HTMLImageElement, but the WebGL calls made from Texture
+            // accept other things for the image data besides an HTMLImageElement. So even though TinyGraphics
+            // didn't intend this, we can just set Texture.image to an ImageData instead. This is massively faster
+            // than the intended `output_texture.image.src = this.scratchpad.toDataURL("image/png");`.
+            output_texture.image = this.scratchpad_context.getImageData(0, 0, this.scratchpad.width, this.scratchpad.height);
             output_texture.copy_onto_graphics_card(context.context, false);
 
             // Start over on a new drawing, never displaying the prior one:
