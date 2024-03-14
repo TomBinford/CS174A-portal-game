@@ -72,6 +72,7 @@ export class PortalGame extends Scene {
             sphere4: new defs.Subdivision_Sphere(4),
             square: new defs.Square(),
             sky: new defs.Square(),
+            head: new defs.Cube(),
         };
 
         this.shapes.sky.arrays.texture_coord = this.shapes.sky.arrays.texture_coord.map(x => x.times(10));
@@ -80,6 +81,8 @@ export class PortalGame extends Scene {
         this.materials = {
             body: new Material(new defs.Phong_Shader(),
                 {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
+            head: new Material(new defs.Phong_Shader(),
+                {ambient: 1.0, diffusivity: .6, color: hex_color("#ffb600")}),
             asish_texture: new Material(new Textured_Phong(), {
                 ambient: 1.0,
                 texture: new Texture("assets/asish.jpeg")
@@ -375,18 +378,18 @@ export class PortalGame extends Scene {
                 this.d_pressed = false;
             });
         this.new_line();
-        this.key_triggered_button("Shoot first portal", ["o"], () => {
+        this.key_triggered_button("Shoot first portal", ["1"], () => {
             if (this.has_pointer_lock) {
                 this.requested_portal1_shoot = true;
             }
         });
-        this.key_triggered_button("Shoot second portal", ["p"], () => {
+        this.key_triggered_button("Shoot second portal", ["2"], () => {
             if (this.has_pointer_lock) {
                 this.requested_portal2_shoot = true;
             }
         });
         this.new_line();
-        this.key_triggered_button("Toggle Asish Mode", ["x"], () => {
+        this.key_triggered_button("Toggle Asish Mode", ["Control", "a"], () => {
             this.asish_mode ^= 1;
         });
         this.new_line();
@@ -398,7 +401,7 @@ export class PortalGame extends Scene {
             this.portal2 = null;
         });
         this.new_line();
-        this.key_triggered_button("Toggle All Portals", ["Control", "3"], () => {
+        this.key_triggered_button("Toggle All Portals", ["x"], () => {
             this.portal1 = null;
             this.portal2 = null;
         });
@@ -711,8 +714,12 @@ export class PortalGame extends Scene {
             // Create Body (a sphere below the player transform)
             const player_look_transform = Mat4.rotation(this.player.orientation_clockwise, 0, -1, 0).times(Mat4.rotation(this.player.orientation_up, 1, 0, 0));
             const player_transform = Mat4.translation(...this.player.position).times(player_look_transform);
-            const body_transform = player_transform.times(Mat4.translation(0, -1.05, 0));
+            const body_transform = player_transform.times(Mat4.translation(0, -1.10, 0));
             this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.body);
+
+            // Create head (a cube above the player transform)
+            const head_transform = Mat4.translation(...this.player.position).times(Mat4.translation(0, 0.9, 0));
+            this.shapes.head.draw(context, program_state, head_transform, this.materials.head);
 
             // When the player is looking at a plane, draw a sphere there.
             const [_wall, look_at_point, _look_at_t] = this.determine_player_look_at(game_walls);
@@ -773,8 +780,7 @@ export class PortalGame extends Scene {
         }
 
         // Create Body (A sphere below the player/camera transform)
-        // Note: The sphere currently partially obstructs the camera view to ensure that the sphere is there
-        const body_transform = program_state.camera_transform.times(Mat4.translation(0, -1.05, 0));
+        const body_transform = Mat4.translation(...this.player.position).times(Mat4.translation(0, -1.2, 0));
         this.shapes.sphere3.draw(context, program_state, body_transform, this.materials.body);
 
         // When the player is looking at a plane, draw a sphere there.
