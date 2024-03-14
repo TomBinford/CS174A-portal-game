@@ -135,7 +135,8 @@ export class PortalGame extends Scene {
         });*/
         this.materials.orange_portal_textured = new Material(new Screen_Rendered_Texture(), {
             ambient: 1.0,
-            texture: this.texture_through_blue_portal,
+            texture: this.materials.orange_portal_on.texture,
+            screenTexture: this.texture_through_blue_portal,
         });
 
         this.w_pressed = false;
@@ -683,9 +684,13 @@ export class PortalGame extends Scene {
 
             // Draw the entrance portal but not the exit (as we are already from the POV of it).
             if (this.portal1) {
-                // TODO fix this to draw less dynamically. It currently has issues when the exit
-                // portal can see into the entrance portal.
-                this.portal1.draw(context, program_state, this.shapes.square, this.portal2);
+                const d = -this.portal1.center.dot(this.portal1.normal);
+                const dot = this.portal1.normal.dot(camera_position) + d;
+                if (dot >= 0) {
+                    // TODO fix this to draw less dynamically. It currently has issues when the exit
+                    // portal can see into the entrance portal.
+                    this.portal1.draw(context, program_state, this.shapes.square, this.portal2);
+                }
             }
 
             // Create Body (a sphere below the player transform)
@@ -788,18 +793,26 @@ class Screen_Rendered_Texture extends Textured_Phong {
         return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
                 uniform sampler2D texture;
+                uniform sampler2D screenTexture;
                 uniform float screen_width;
                 uniform float screen_height;
 
                 void main(){
-                    // Use the fragment's position in screen space to select from the texture:
-                    vec4 tex_color = texture2D( texture, vec2(gl_FragCoord.x / screen_width, gl_FragCoord.y / screen_height) );
-                    tex_color.w = 1.0;
-                    //if( tex_color.w < .01 ) discard;
-                                                                             // Compute an initial (ambient) color:
-                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w );
-                                                                             // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    vec4 tex_color = texture2D( texture, f_tex_coord );
+                    if( max(tex_color.x, max(tex_color.y, tex_color.z)) <= 0.1 && tex_color.w == 1.0 ) {
+                        tex_color.xyz *= tex_color.w;
+                        // Use the fragment's position in screen space to select from screenTexture.
+                        //tex_color.xyz += (1.0 - tex_color.w) * texture2D( screenTexture, vec2(gl_FragCoord.x / screen_width, gl_FragCoord.y / screen_height) ).xyz;
+                        tex_color.xyz = texture2D( screenTexture, vec2(gl_FragCoord.x / screen_width, gl_FragCoord.y / screen_height) ).xyz;
+                        gl_FragColor = vec4(tex_color.xyz, 1.0);
+                    }
+                    else {
+                        //if( tex_color.w < .01 ) discard;
+                                                                                 // Compute an initial (ambient) color:
+                        gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w );
+                                                                                 // Compute the final color with contributions from lights:
+                        gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    }
                   } `;
     }
 
@@ -809,5 +822,12 @@ class Screen_Rendered_Texture extends Textured_Phong {
 
         context.uniform1f(gpu_addresses.screen_width, 1080.0);
         context.uniform1f(gpu_addresses.screen_height, 600.0);
+
+        if (material.screenTexture && material.screenTexture.ready) {
+            // Select texture unit 1 for the fragment shader Sampler2D uniform called "screenTexture":
+            context.uniform1i(gpu_addresses.screenTexture, 1);
+            // For this draw, use the texture image from correct the GPU buffer:
+            material.screenTexture.activate(context, 1);
+        }
     }
 }
