@@ -654,7 +654,7 @@ export class PortalGame extends Scene {
             if (!(this.render_portal_view && portal_entrance && portal_exit)) {
                 return;
             }
-            // Set the fake camera for looking through the orange portal
+            // Set the fake camera for looking through the exit portal
             const angle_into_in_portal = Math.PI + Math.atan2(portal_entrance.normal[0], -portal_entrance.normal[2]);
             const angle_out_of_out_portal = Math.atan2(portal_exit.normal[0], -portal_exit.normal[2]);
             const angle_diff = angle_out_of_out_portal - angle_into_in_portal;
@@ -677,9 +677,12 @@ export class PortalGame extends Scene {
             for (const wall of game_walls) {
                 // Do not draw the back wall of the wall the exit portal is placed on.
                 if (wall.normal.dot(portal_exit.normal) < -0.999) {
-                    const corresponding_point_to_portal_on_wall = portal_exit.center.minus(portal_exit.normal.times(this.portal_offset_from_wall));
-                    if (this.is_planar_point_inside_rectangle(wall.normal, wall.center, wall.width, wall.height, corresponding_point_to_portal_on_wall)) {
-                        continue;
+                    const t = -this.t_from_plane_to_point(wall.normal, wall.center, portal_exit.center);
+                    if (Math.abs(t - this.portal_offset_from_wall) < 0.1) {
+                        const corresponding_point_to_portal_on_wall = portal_exit.center.minus(portal_exit.normal.times(this.portal_offset_from_wall));
+                        if (this.is_planar_point_inside_rectangle(wall.normal, wall.center, wall.width, wall.height, corresponding_point_to_portal_on_wall)) {
+                            continue;
+                        }
                     }
                 }
                 if (wall.always_draw) {
