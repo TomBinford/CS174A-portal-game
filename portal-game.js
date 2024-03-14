@@ -124,12 +124,14 @@ export class PortalGame extends Scene {
         this.render_portal_view = false;
         // Objects for rendering the portal views to textures.
         this.scratchpad = document.createElement('canvas');
-        this.scratchpad.width = 1024; // TODO use context.width supplied to display()
-        this.scratchpad.height = 1024; // TODO use context.height supplied to display()
+        this.scratchpad.width = 1024;
+        this.scratchpad.height = 1024;
         // A hidden canvas for re-sizing the real canvas to be square:
         this.scratchpad_context = this.scratchpad.getContext("2d", { willReadFrequently: true });
-        this.texture_through_blue_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-        this.texture_through_orange_portal = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+        // noinspection SpellCheckingInspection
+        const white1x1PixelData = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        this.texture_through_blue_portal = new Texture(white1x1PixelData);
+        this.texture_through_orange_portal = new Texture(white1x1PixelData);
         this.materials.orange_portal_textured = new Material(new Screen_Rendered_Texture(), {
             ambient: 1.0,
             texture: this.materials.orange_portal_on.texture,
@@ -487,14 +489,12 @@ export class PortalGame extends Scene {
         });
     }
 
-    draw_environment(context, program_state, environment_transform) {
+    draw_environment(context, program_state) {
         // Draw floor at origin translated down by y = -0.5 units
-        var floor_transform = Mat4.identity();
-        var sky_transform = Mat4.identity();
-        var horizontal_angle = Math.PI / 2;
+        const horizontal_angle = Math.PI / 2;
 
-        floor_transform = floor_transform.times(Mat4.scale(100, 8, 120).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
-        sky_transform = sky_transform.times(Mat4.scale(900, 8, 900).times(Mat4.translation(0, 3, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0)));
+        const floor_transform = Mat4.scale(100, 8, 120).times(Mat4.translation(0, -0.5, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0));
+        const sky_transform = Mat4.scale(900, 8, 900).times(Mat4.translation(0, 3, 0)).times(Mat4.rotation(horizontal_angle, 1, 0, 0));
 
         this.shapes.square.draw(context, program_state, floor_transform, this.materials.floor_texture);
         this.shapes.sky.draw(context, program_state, sky_transform, this.materials.sky_texture);
