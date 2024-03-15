@@ -158,7 +158,9 @@ export class PortalGame extends Scene {
         this.max_portaling_distance = 150.0;
         this.requested_portal1_shoot = false;
         this.requested_portal2_shoot = false;
-        this.portal1 = new Portal(vec4(-15, 1, 25 - this.portal_offset_from_wall, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_textured);
+        // Make only one portal to start
+        this.portal1 = null;
+        //this.portal1 = new Portal(vec4(-15, 1, 25 - this.portal_offset_from_wall, 1), vec4(0, 0, -1, 0), 5, 5, this.materials.orange_portal_off, this.materials.orange_portal_textured);
         this.portal2 = new Portal(vec4(-25 + this.portal_offset_from_wall, 1, 0, 1), vec4(1, 0, 0, 0), 5, 5, this.materials.blue_portal_off, this.materials.blue_portal_textured);
 
         this.player_speed = 0.015;
