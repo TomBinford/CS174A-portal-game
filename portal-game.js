@@ -1,10 +1,10 @@
-import {defs, tiny} from './examples/common.js';
+import { defs, tiny } from './examples/common.js';
 
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Textured_Phong} = defs
+const { Textured_Phong } = defs;
 
 function clamp(x, min, max) {
     return x < min ? min : (x > max ? max : x);
@@ -80,9 +80,9 @@ export class PortalGame extends Scene {
         // *** Materials
         this.materials = {
             body: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#60a000")}),
+                { ambient: 1.0, diffusivity: .6, color: hex_color("#60a000") }),
             head: new Material(new defs.Phong_Shader(),
-                {ambient: 1.0, diffusivity: .6, color: hex_color("#ffb600")}),
+                { ambient: 1.0, diffusivity: .6, color: hex_color("#ffb600") }),
             asish_texture: new Material(new Textured_Phong(), {
                 ambient: 1.0,
                 texture: new Texture("assets/asish.jpeg")
@@ -122,9 +122,9 @@ export class PortalGame extends Scene {
                 ambient: 1.0,
                 texture: new Texture("assets/blue-portal-off.png")
             }),
-        }
+        };
 
-        this.render_portal_view = false;
+        this.render_portal_view = true;
         // Objects for rendering the portal views to textures.
         this.scratchpad = document.createElement('canvas');
         this.scratchpad.width = 1024;
@@ -447,7 +447,7 @@ export class PortalGame extends Scene {
             if (can_attempt_pointer_lock) {
                 // The WebStorm warning can be ignored, it's because unadjustedMovement isn't supported everywhere:
                 // https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock#browser_compatibility
-                dark_overlay.requestPointerLock({unadjustedMovement: true});
+                dark_overlay.requestPointerLock({ unadjustedMovement: true });
             }
         });
         document.addEventListener("pointerlockchange", () => {
@@ -727,7 +727,7 @@ export class PortalGame extends Scene {
             const [_wall, look_at_point, _look_at_t] = this.determine_player_look_at(game_walls);
             if (look_at_point !== null) {
                 const sphere_transform = Mat4.translation(...xyz(look_at_point)).times(Mat4.scale(0.2, 0.2, 0.2));
-                this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({color: hex_color("#ff4040")}));
+                this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({ color: hex_color("#ff4040") }));
             }
 
             // Render from the camera's POV into the texture. This only renders the
@@ -789,7 +789,7 @@ export class PortalGame extends Scene {
         const [_wall, look_at_point, _look_at_t] = this.determine_player_look_at(game_walls);
         if (look_at_point !== null) {
             const sphere_transform = Mat4.translation(...xyz(look_at_point)).times(Mat4.scale(0.2, 0.2, 0.2));
-            this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({color: hex_color("#ff4040")}));
+            this.shapes.sphere3.draw(context, program_state, sphere_transform, this.materials.body.override({ color: hex_color("#ff4040") }));
         }
     }
 }
